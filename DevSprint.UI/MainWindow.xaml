@@ -11,11 +11,7 @@
 
     <Window.Resources>
         <DataTemplate x:Key="JiraIssueTemplate">
-            <Border Background="{StaticResource CardBrush}"
-                    CornerRadius="8" Padding="16,12" Margin="0,0,0,6"
-                    BorderThickness="1.5"
-                    BorderBrush="{Binding IsInCurrentSprint, Converter={StaticResource SprintBorderBrushConverter}}"
-                    Effect="{Binding IsInCurrentSprint, Converter={StaticResource SprintShadowConverter}}">
+            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,6">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
@@ -80,23 +76,35 @@
                     <!-- Quality signals -->
                     <StackPanel Grid.Column="1" Grid.Row="2" Orientation="Horizontal"
                                 Margin="0,6,0,0">
-                        <Border CornerRadius="3" Padding="6,2" Margin="0,0,6,0"
+                        <Border CornerRadius="4" Padding="8,3" Margin="0,0,8,0"
                                 Background="{Binding HasDescription, Converter={StaticResource BoolToSignalBrushConverter}}">
-                            <TextBlock Text="Description" FontSize="11" Foreground="White"
-                                       FontFamily="{StaticResource ContentFont}"/>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding HasDescription, Converter={StaticResource BoolToSignalIconConverter}}"
+                                           FontSize="11" FontWeight="Bold" Foreground="White" Margin="0,0,4,0"/>
+                                <TextBlock Text="Description" FontSize="11" Foreground="White"
+                                           FontFamily="{StaticResource ContentFont}"/>
+                            </StackPanel>
                         </Border>
-                        <Border CornerRadius="3" Padding="6,2" Margin="0,0,6,0"
+                        <Border CornerRadius="4" Padding="8,3" Margin="0,0,8,0"
                                 Background="{Binding HasAcceptanceCriteria, Converter={StaticResource BoolToSignalBrushConverter}}">
-                            <TextBlock Text="Acceptance Criteria" FontSize="11" Foreground="White"
-                                       FontFamily="{StaticResource ContentFont}"/>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding HasAcceptanceCriteria, Converter={StaticResource BoolToSignalIconConverter}}"
+                                           FontSize="11" FontWeight="Bold" Foreground="White" Margin="0,0,4,0"/>
+                                <TextBlock Text="Acceptance Criteria" FontSize="11" Foreground="White"
+                                           FontFamily="{StaticResource ContentFont}"/>
+                            </StackPanel>
                         </Border>
-                        <Border CornerRadius="3" Padding="6,2"
+                        <Border CornerRadius="4" Padding="8,3"
                                 Background="{Binding HasComments, Converter={StaticResource BoolToSignalBrushConverter}}">
-                            <TextBlock FontSize="11" Foreground="White"
-                                       FontFamily="{StaticResource ContentFont}">
-                                <Run Text="Comments"/>
-                                <Run Text="{Binding CommentCount, StringFormat='({0})', Mode=OneWay}"/>
-                            </TextBlock>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding HasComments, Converter={StaticResource BoolToSignalIconConverter}}"
+                                           FontSize="11" FontWeight="Bold" Foreground="White" Margin="0,0,4,0"/>
+                                <TextBlock FontSize="11" Foreground="White"
+                                           FontFamily="{StaticResource ContentFont}">
+                                    <Run Text="Comments"/>
+                                    <Run Text="{Binding CommentCount, StringFormat='({0})', Mode=OneWay}"/>
+                                </TextBlock>
+                            </StackPanel>
                         </Border>
                     </StackPanel>
 

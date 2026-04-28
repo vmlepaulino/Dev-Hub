@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Media;
-using System.Windows.Media.Effects;
 using DevSprint.UI.Models;
 
 namespace DevSprint.UI.Converters;
@@ -27,11 +26,27 @@ public sealed class StringToVisibilityConverter : IValueConverter
 
 public sealed class BoolToSignalBrushConverter : IValueConverter
 {
-    private static readonly SolidColorBrush GreenBrush = new(Color.FromRgb(0x0F, 0x7B, 0x0F));
-    private static readonly SolidColorBrush RedBrush = new(Color.FromRgb(0xD1, 0x34, 0x38));
+    private static readonly SolidColorBrush GreenBrush = CreateFrozenBrush(0x10, 0xA3, 0x10);
+    private static readonly SolidColorBrush RedBrush = CreateFrozenBrush(0xE8, 0x1C, 0x23);
 
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
         value is true ? GreenBrush : RedBrush;
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+
+    private static SolidColorBrush CreateFrozenBrush(byte r, byte g, byte b)
+    {
+        var brush = new SolidColorBrush(Color.FromRgb(r, g, b));
+        brush.Freeze();
+        return brush;
+    }
+}
+
+public sealed class BoolToSignalIconConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+        value is true ? "?" : "?";
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
         throw new NotSupportedException();
@@ -52,35 +67,6 @@ public sealed class StateHistoryConverter : IValueConverter
 
         return string.Join("  ?  ", grouped);
     }
-
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
-        throw new NotSupportedException();
-}
-
-public sealed class SprintBorderBrushConverter : IValueConverter
-{
-    private static readonly SolidColorBrush ActiveBrush = new(Color.FromRgb(0x00, 0x78, 0xD4));
-    private static readonly SolidColorBrush InactiveBrush = new(Color.FromRgb(0xD1, 0xD1, 0xD1));
-
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
-        value is true ? ActiveBrush : InactiveBrush;
-
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
-        throw new NotSupportedException();
-}
-
-public sealed class SprintShadowConverter : IValueConverter
-{
-    private static readonly DropShadowEffect ActiveShadow = new()
-    {
-        Color = Color.FromRgb(0x00, 0x78, 0xD4),
-        BlurRadius = 12,
-        ShadowDepth = 0,
-        Opacity = 0.3
-    };
-
-    public object? Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
-        value is true ? ActiveShadow : null;
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
         throw new NotSupportedException();

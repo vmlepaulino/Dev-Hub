@@ -73,7 +73,7 @@ public sealed class JiraService : IJiraService
 
         while (true)
         {
-            var fields = "summary,status,assignee,priority,issuetype,created,updated,timespent,statuscategorychangedate,description,comment,customfield_10037,sprint";
+            var fields = "summary,status,assignee,priority,issuetype,created,updated,timespent,statuscategorychangedate,description,comment,customfield_10037";
             var url = $"rest/api/3/search/jql?jql={Uri.EscapeDataString(jql)}&fields={fields}&expand=changelog&startAt={startAt}&maxResults={maxResults}";
             using var response = await _httpClient.GetAsync(url, cancellationToken);
             response.EnsureSuccessStatusCode();
@@ -125,8 +125,7 @@ public sealed class JiraService : IJiraService
             HasDescription = HasContent(fields, "description"),
             HasAcceptanceCriteria = HasContent(fields, "customfield_10037"),
             HasComments = GetCommentCount(fields) > 0,
-            CommentCount = GetCommentCount(fields),
-            IsInCurrentSprint = IsActiveSprint(fields)
+            CommentCount = GetCommentCount(fields)
         };
     }
 
@@ -189,34 +188,9 @@ public sealed class JiraService : IJiraService
             : 0;
     }
 
-    private static bool IsActiveSprint(JsonElement fields)
-    {
-        if (!fields.TryGetProperty("sprint", out var sprint) || sprint.ValueKind == JsonValueKind.Null)
-            return false;
-
-        if (sprint.ValueKind == JsonValueKind.Object)
-        {
-            var state = GetStringOrDefault(sprint, "state");
-            return string.Equals(state, "active", StringComparison.OrdinalIgnoreCase);
-        }
-
-        if (sprint.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var s in sprint.EnumerateArray())
-            {
-                var state = GetStringOrDefault(s, "state");
-                if (string.Equals(state, "active", StringComparison.OrdinalIgnoreCase))
-                    return true;
-            }
-        }
-
-        return false;
-    }
-
     private static List<StateTransition> BuildStateHistory(JsonElement issue, JsonElement fields)
     {
         var transitions = new List<StateTransition>();
-
 
         if (!issue.TryGetProperty("changelog", out var changelog) ||
             !changelog.TryGetProperty("histories", out var histories))
