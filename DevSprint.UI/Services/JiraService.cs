@@ -37,67 +37,67 @@ public sealed class JiraService : IJiraService
         _baseUrl = baseUrl;
     }
 
-    public async Task<IReadOnlyList<JiraIssue>> GetBacklogAsync(DateTime from, DateTime to, CancellationToken cancellationToken = default)
+
+    public async Task<PagedResult<JiraIssue>> GetBacklogAsync(DateTime from, DateTime to, int startAt = 0, CancellationToken cancellationToken = default)
     {
         var fromStr = from.ToString("yyyy-MM-dd");
         var toStr = to.ToString("yyyy-MM-dd");
         var jql = $"project = {_projectKey} AND sprint in openSprints() AND updated >= \"{fromStr}\" AND updated <= \"{toStr}\" ORDER BY updated DESC";
 
-        return await SearchIssuesAsync(jql, cancellationToken);
+        return await SearchIssuesAsync(jql, startAt, cancellationToken);
     }
 
-    public async Task<IReadOnlyList<JiraIssue>> GetMyIssuesAsync(DateTime from, DateTime to, CancellationToken cancellationToken = default)
+    public async Task<PagedResult<JiraIssue>> GetMyIssuesAsync(DateTime from, DateTime to, int startAt = 0, CancellationToken cancellationToken = default)
     {
         var fromStr = from.ToString("yyyy-MM-dd");
         var toStr = to.ToString("yyyy-MM-dd");
         var jql = $"assignee = currentUser() AND updated >= \"{fromStr}\" AND updated <= \"{toStr}\" ORDER BY created DESC";
 
-        return await SearchIssuesAsync(jql, cancellationToken);
+        return await SearchIssuesAsync(jql, startAt, cancellationToken);
     }
 
-    public async Task<IReadOnlyList<JiraIssue>> GetMyCommentedIssuesAsync(DateTime from, DateTime to, CancellationToken cancellationToken = default)
+    public async Task<PagedResult<JiraIssue>> GetMyCommentedIssuesAsync(DateTime from, DateTime to, int startAt = 0, CancellationToken cancellationToken = default)
     {
         var fromStr = from.ToString("yyyy-MM-dd");
         var toStr = to.ToString("yyyy-MM-dd");
-        // Standard Jira Cloud JQL — finds issues where current user added a comment in the date range
         var jql = $"comment ~ currentUser() AND updated >= \"{fromStr}\" AND updated <= \"{toStr}\" ORDER BY created DESC";
 
-        return await SearchIssuesAsync(jql, cancellationToken);
+        return await SearchIssuesAsync(jql, startAt, cancellationToken);
     }
 
-    private async Task<IReadOnlyList<JiraIssue>> SearchIssuesAsync(string jql, CancellationToken cancellationToken)
+    private async Task<PagedResult<JiraIssue>> SearchIssuesAsync(string jql, int startAt, CancellationToken cancellationToken)
     {
-        var issues = new List<JiraIssue>();
-        var startAt = 0;
         const int maxResults = 50;
+        var fields = "summary,status,assignee,priority,issuetype,created,updated,timespent,statuscategorychangedate,description,comment,customfield_10037";
+        var url = $"rest/api/3/search/jql?jql={Uri.EscapeDataString(jql)}&fields={fields}&expand=changelog&startAt={startAt}&maxResults={maxResults}";
 
-        while (true)
+        using var response = await _httpClient.GetAsync(url, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+
+        var issues = new List<JiraIssue>();
+
+        if (root.TryGetProperty("issues", out var issuesArray))
         {
-            var fields = "summary,status,assignee,priority,issuetype,created,updated,timespent,statuscategorychangedate,description,comment,customfield_10037";
-            var url = $"rest/api/3/search/jql?jql={Uri.EscapeDataString(jql)}&fields={fields}&expand=changelog&startAt={startAt}&maxResults={maxResults}";
-            using var response = await _httpClient.GetAsync(url, cancellationToken);
-            response.EnsureSuccessStatusCode();
-
-            var json = await response.Content.ReadAsStringAsync(cancellationToken);
-            using var doc = JsonDocument.Parse(json);
-            var root = doc.RootElement;
-
-            if (!root.TryGetProperty("issues", out var issuesArray))
-                break;
-
             foreach (var item in issuesArray.EnumerateArray())
             {
                 issues.Add(MapIssue(item, _baseUrl));
             }
-
-            if (!root.TryGetProperty("total", out var totalElement) || startAt + maxResults >= totalElement.GetInt32())
-                break;
-
-            startAt += maxResults;
         }
 
-        return issues;
+        var total = root.TryGetProperty("total", out var totalElement) ? totalElement.GetInt32() : 0;
+
+        return new PagedResult<JiraIssue>
+        {
+            Items = issues,
+            Total = total,
+            StartAt = startAt
+        };
     }
+
 
     private static JiraIssue MapIssue(JsonElement issue, string baseUrl)
     {

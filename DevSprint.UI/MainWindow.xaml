@@ -204,7 +204,17 @@
                     <ItemsControl.Template>
                         <ControlTemplate TargetType="ItemsControl">
                             <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,4,0">
-                                <ItemsPresenter/>
+                                <StackPanel>
+                                    <ItemsPresenter/>
+                                    <TextBlock Text="{Binding BacklogStatus}"
+                                               FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
+                                               FontFamily="{StaticResource ContentFont}"
+                                               HorizontalAlignment="Center" Margin="0,8,0,4"/>
+                                    <Button Content="Load More" Command="{Binding LoadMoreBacklogCommand}"
+                                            Style="{StaticResource AccentButton}"
+                                            HorizontalAlignment="Center" Margin="0,0,0,12"
+                                            Visibility="{Binding HasMoreBacklog, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                </StackPanel>
                             </ScrollViewer>
                         </ControlTemplate>
                     </ItemsControl.Template>
@@ -232,7 +242,17 @@
                     <ItemsControl.Template>
                         <ControlTemplate TargetType="ItemsControl">
                             <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,4,0">
-                                <ItemsPresenter/>
+                                <StackPanel>
+                                    <ItemsPresenter/>
+                                    <TextBlock Text="{Binding MyIssuesStatus}"
+                                               FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
+                                               FontFamily="{StaticResource ContentFont}"
+                                               HorizontalAlignment="Center" Margin="0,8,0,4"/>
+                                    <Button Content="Load More" Command="{Binding LoadMoreMyIssuesCommand}"
+                                            Style="{StaticResource AccentButton}"
+                                            HorizontalAlignment="Center" Margin="0,0,0,12"
+                                            Visibility="{Binding HasMoreMyIssues, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                </StackPanel>
                             </ScrollViewer>
                         </ControlTemplate>
                     </ItemsControl.Template>
