@@ -62,20 +62,22 @@ public partial class MainViewModel : ObservableObject
 
         try
         {
+            // Fetch sprint keys (lightweight) in parallel with data
+            var sprintKeysTask = _jiraService.GetCurrentSprintKeysAsync();
             var backlogTask = _jiraService.GetBacklogAsync(FromDate, ToDate, 0, InitialPageSize);
             var assignedTask = _jiraService.GetMyIssuesAsync(FromDate, ToDate, 0, InitialPageSize);
             var commentedTask = _jiraService.GetMyCommentedIssuesAsync(FromDate, ToDate, 0, InitialPageSize);
 
-            await Task.WhenAll(backlogTask, assignedTask, commentedTask);
+            await Task.WhenAll(sprintKeysTask, backlogTask, assignedTask, commentedTask);
 
+            _sprintKeys = sprintKeysTask.Result;
             var backlogResult = backlogTask.Result;
             var assignedResult = assignedTask.Result;
             var commentedResult = commentedTask.Result;
 
             foreach (var issue in backlogResult.Items)
             {
-                _sprintKeys.Add(issue.Key);
-                issue.IsCurrentSprint = true;
+                issue.IsCurrentSprint = _sprintKeys.Contains(issue.Key);
                 BacklogIssues.Add(issue);
             }
 
@@ -114,8 +116,7 @@ public partial class MainViewModel : ObservableObject
 
             foreach (var issue in result.Items)
             {
-                _sprintKeys.Add(issue.Key);
-                issue.IsCurrentSprint = true;
+                issue.IsCurrentSprint = _sprintKeys.Contains(issue.Key);
                 BacklogIssues.Add(issue);
             }
 

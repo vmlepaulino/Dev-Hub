@@ -43,7 +43,7 @@ public sealed class JiraService : IJiraService
     {
         var fromStr = from.ToString("yyyy-MM-dd");
         var toStr = to.ToString("yyyy-MM-dd");
-        var jql = $"project = {_projectKey} AND sprint in openSprints() AND updated >= \"{fromStr}\" AND updated <= \"{toStr}\" ORDER BY updated DESC";
+        var jql = $"project = {_projectKey} AND updated >= \"{fromStr}\" AND updated <= \"{toStr}\" ORDER BY updated DESC";
 
         return await SearchIssuesAsync(jql, startAt, maxResults, cancellationToken);
     }
@@ -64,6 +64,40 @@ public sealed class JiraService : IJiraService
         var jql = $"comment ~ currentUser() AND updated >= \"{fromStr}\" AND updated <= \"{toStr}\" ORDER BY created DESC";
 
         return await SearchIssuesAsync(jql, startAt, maxResults, cancellationToken);
+    }
+
+
+    public async Task<HashSet<string>> GetCurrentSprintKeysAsync(CancellationToken cancellationToken = default)
+    {
+        var keys = new HashSet<string>();
+        var jql = $"project = {_projectKey} AND sprint in openSprints()";
+        var startAt = 0;
+
+        while (true)
+        {
+            var url = $"rest/api/3/search/jql?jql={Uri.EscapeDataString(jql)}&fields=key&startAt={startAt}&maxResults=100";
+            using var response = await _httpClient.GetAsync(url, cancellationToken);
+            if (!response.IsSuccessStatusCode) break;
+
+            var json = await response.Content.ReadAsStringAsync(cancellationToken);
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            if (!root.TryGetProperty("issues", out var issues)) break;
+
+            foreach (var issue in issues.EnumerateArray())
+            {
+                var key = GetStringOrDefault(issue, "key");
+                if (!string.IsNullOrEmpty(key))
+                    keys.Add(key);
+            }
+
+            var total = root.TryGetProperty("total", out var t) && t.ValueKind == JsonValueKind.Number ? t.GetInt32() : 0;
+            startAt += 100;
+            if (total == 0 || startAt >= total) break;
+        }
+
+        return keys;
     }
 
     private async Task<PagedResult<JiraIssue>> SearchIssuesAsync(string jql, int startAt, int maxResults, CancellationToken cancellationToken)
