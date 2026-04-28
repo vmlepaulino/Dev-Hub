@@ -1,0 +1,194 @@
+﻿<Window x:Class="DevSprint.UI.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:DevSprint.UI.ViewModels"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
+        Style="{StaticResource FluentWindow}"
+        Title="DevSprint" Height="700" Width="1200">
+
+    <Window.Resources>
+        <DataTemplate x:Key="JiraIssueTemplate">
+            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,6">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Column="0" Grid.RowSpan="2"
+                            Background="#EFF6FC" CornerRadius="4"
+                            Padding="10,5" Margin="0,0,14,0"
+                            VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Key}" FontWeight="SemiBold"
+                                   Foreground="{StaticResource AccentBrush}" FontSize="12"
+                                   FontFamily="{StaticResource ContentFont}"/>
+                    </Border>
+
+                    <TextBlock Grid.Column="1" Grid.Row="0"
+                               Text="{Binding Summary}"
+                               FontSize="13" FontWeight="SemiBold"
+                               Foreground="{StaticResource TextPrimaryBrush}"
+                               FontFamily="{StaticResource ContentFont}"
+                               TextTrimming="CharacterEllipsis"/>
+
+                    <StackPanel Grid.Column="1" Grid.Row="1" Orientation="Horizontal"
+                                Margin="0,4,0,0">
+                        <TextBlock Text="{Binding Created, StringFormat='Created: {0:dd/MM/yyyy}'}"
+                                   FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
+                                   FontFamily="{StaticResource ContentFont}"/>
+                        <TextBlock Text="·" Margin="8,0" FontSize="12"
+                                   Foreground="{StaticResource TextSecondaryBrush}"/>
+                        <TextBlock Text="{Binding Updated, StringFormat='Updated: {0:dd/MM/yyyy}'}"
+                                   FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
+                                   FontFamily="{StaticResource ContentFont}"/>
+                        <TextBlock Text="·" Margin="8,0" FontSize="12"
+                                   Foreground="{StaticResource TextSecondaryBrush}"/>
+                        <TextBlock Text="{Binding Status}" FontSize="12"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   FontFamily="{StaticResource ContentFont}"/>
+                        <TextBlock Text="{Binding DaysInCurrentState, StringFormat='({0}d)'}"
+                                   Margin="4,0,0,0" FontSize="12"
+                                   Foreground="{StaticResource AccentBrush}"
+                                   FontFamily="{StaticResource ContentFont}"/>
+                        <TextBlock Text="·" Margin="8,0" FontSize="12"
+                                   Foreground="{StaticResource TextSecondaryBrush}"/>
+                        <TextBlock Text="{Binding IssueType}" FontSize="12"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   FontFamily="{StaticResource ContentFont}"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2" Grid.RowSpan="2"
+                                VerticalAlignment="Center" HorizontalAlignment="Right"
+                                Margin="14,0,0,0">
+                        <TextBlock Text="{Binding TimeSpent, TargetNullValue='-', FallbackValue='-'}"
+                                   FontSize="16" FontWeight="SemiBold"
+                                   Foreground="{StaticResource AccentBrush}"
+                                   HorizontalAlignment="Center"
+                                   FontFamily="{StaticResource ContentFont}"/>
+                        <TextBlock Text="time spent" FontSize="11"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   HorizontalAlignment="Center"
+                                   FontFamily="{StaticResource ContentFont}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
+    </Window.Resources>
+
+    <Grid Margin="32,24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <TextBlock Grid.Row="0" Text="DevSprint"
+                   FontSize="32" FontWeight="SemiBold"
+                   Foreground="{StaticResource TextPrimaryBrush}"
+                   FontFamily="{StaticResource ContentFont}"
+                   Margin="0,0,0,20"/>
+
+        <!-- Date range + Load -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,20">
+            <TextBlock Text="From" VerticalAlignment="Center" Margin="0,0,10,0"
+                       Foreground="{StaticResource TextSecondaryBrush}"
+                       FontFamily="{StaticResource ContentFont}" FontSize="13"/>
+            <DatePicker SelectedDate="{Binding FromDate}" Width="150"/>
+            <TextBlock Text="To" VerticalAlignment="Center" Margin="16,0,10,0"
+                       Foreground="{StaticResource TextSecondaryBrush}"
+                       FontFamily="{StaticResource ContentFont}" FontSize="13"/>
+            <DatePicker SelectedDate="{Binding ToDate}" Width="150"/>
+            <Button Content="Load" Command="{Binding LoadDataCommand}"
+                    Style="{StaticResource AccentButton}" Margin="16,0,0,0"/>
+        </StackPanel>
+
+        <!-- Error message -->
+        <TextBlock Grid.Row="2" Text="{Binding ErrorMessage}"
+                   Foreground="{StaticResource ErrorBrush}" Margin="0,0,0,8"
+                   Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibilityConverter}}"
+                   TextWrapping="Wrap" FontFamily="{StaticResource ContentFont}" FontSize="13"/>
+
+        <!-- Loading indicator -->
+        <TextBlock Grid.Row="3" Text="Loading…" FontSize="16"
+                   Foreground="{StaticResource TextSecondaryBrush}"
+                   FontFamily="{StaticResource ContentFont}"
+                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                   Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}"
+                   Panel.ZIndex="1"/>
+
+        <!-- Two-column layout: Backlog | My Activity -->
+        <Grid Grid.Row="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="20"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Backlog -->
+            <DockPanel Grid.Column="0">
+                <TextBlock DockPanel.Dock="Top" Text="Board Backlog"
+                           FontSize="20" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextPrimaryBrush}"
+                           FontFamily="{StaticResource ContentFont}"
+                           Margin="0,0,0,12"/>
+                <ItemsControl ItemsSource="{Binding BacklogIssues}"
+                              VirtualizingStackPanel.IsVirtualizing="True"
+                              ScrollViewer.CanContentScroll="True">
+                    <ItemsControl.Template>
+                        <ControlTemplate TargetType="ItemsControl">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,4,0">
+                                <ItemsPresenter/>
+                            </ScrollViewer>
+                        </ControlTemplate>
+                    </ItemsControl.Template>
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <VirtualizingStackPanel/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <StaticResource ResourceKey="JiraIssueTemplate"/>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </DockPanel>
+
+            <!-- My Activity -->
+            <DockPanel Grid.Column="2">
+                <TextBlock DockPanel.Dock="Top" Text="My Activity"
+                           FontSize="20" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextPrimaryBrush}"
+                           FontFamily="{StaticResource ContentFont}"
+                           Margin="0,0,0,12"/>
+                <ItemsControl ItemsSource="{Binding MyIssues}"
+                              VirtualizingStackPanel.IsVirtualizing="True"
+                              ScrollViewer.CanContentScroll="True">
+                    <ItemsControl.Template>
+                        <ControlTemplate TargetType="ItemsControl">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,4,0">
+                                <ItemsPresenter/>
+                            </ScrollViewer>
+                        </ControlTemplate>
+                    </ItemsControl.Template>
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <VirtualizingStackPanel/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <StaticResource ResourceKey="JiraIssueTemplate"/>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </DockPanel>
+        </Grid>
+    </Grid>
+</Window>
