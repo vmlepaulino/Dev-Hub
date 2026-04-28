@@ -88,7 +88,17 @@ public sealed class JiraService : IJiraService
             }
         }
 
-        var total = root.TryGetProperty("total", out var totalElement) ? totalElement.GetInt32() : 0;
+        // Try 'total', fall back to checking for next page indicators
+        var total = 0;
+        if (root.TryGetProperty("total", out var totalElement) && totalElement.ValueKind == JsonValueKind.Number)
+        {
+            total = totalElement.GetInt32();
+        }
+        else
+        {
+            // If no total, estimate: if we got a full page, assume there's more
+            total = issues.Count == maxResults ? startAt + issues.Count + 1 : startAt + issues.Count;
+        }
 
         return new PagedResult<JiraIssue>
         {

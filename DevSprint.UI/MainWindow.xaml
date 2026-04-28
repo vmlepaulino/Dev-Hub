@@ -206,14 +206,15 @@
                             <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,4,0">
                                 <StackPanel>
                                     <ItemsPresenter/>
-                                    <TextBlock Text="{Binding BacklogStatus}"
+                                    <TextBlock Text="{Binding DataContext.BacklogStatus, RelativeSource={RelativeSource AncestorType=Window}}"
                                                FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
                                                FontFamily="{StaticResource ContentFont}"
                                                HorizontalAlignment="Center" Margin="0,8,0,4"/>
-                                    <Button Content="Load More" Command="{Binding LoadMoreBacklogCommand}"
+                                    <Button Content="Load More"
+                                            Command="{Binding DataContext.LoadMoreBacklogCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                             Style="{StaticResource AccentButton}"
                                             HorizontalAlignment="Center" Margin="0,0,0,12"
-                                            Visibility="{Binding HasMoreBacklog, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                            Visibility="{Binding DataContext.HasMoreBacklog, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                 </StackPanel>
                             </ScrollViewer>
                         </ControlTemplate>
@@ -244,14 +245,15 @@
                             <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,4,0">
                                 <StackPanel>
                                     <ItemsPresenter/>
-                                    <TextBlock Text="{Binding MyIssuesStatus}"
+                                    <TextBlock Text="{Binding DataContext.MyIssuesStatus, RelativeSource={RelativeSource AncestorType=Window}}"
                                                FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
                                                FontFamily="{StaticResource ContentFont}"
                                                HorizontalAlignment="Center" Margin="0,8,0,4"/>
-                                    <Button Content="Load More" Command="{Binding LoadMoreMyIssuesCommand}"
+                                    <Button Content="Load More"
+                                            Command="{Binding DataContext.LoadMoreMyIssuesCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                             Style="{StaticResource AccentButton}"
                                             HorizontalAlignment="Center" Margin="0,0,0,12"
-                                            Visibility="{Binding HasMoreMyIssues, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                            Visibility="{Binding DataContext.HasMoreMyIssues, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                 </StackPanel>
                             </ScrollViewer>
                         </ControlTemplate>
