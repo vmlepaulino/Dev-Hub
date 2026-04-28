@@ -199,32 +199,25 @@ Title="DevSprint" Height="700" Width="1200">
                            Foreground="{StaticResource TextPrimaryBrush}"
                            FontFamily="{StaticResource ContentFont}"
                            Margin="0,0,0,12"/>
-                <ItemsControl ItemsSource="{Binding BacklogIssues}"
-                              VirtualizingStackPanel.IsVirtualizing="True"
-                              ScrollViewer.CanContentScroll="True">
-                    <ItemsControl.Template>
-                        <ControlTemplate TargetType="ItemsControl">
-                            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,4,0"
-                                          b:ScrollEndBehavior.Command="{Binding DataContext.ScrollBacklogCommand, RelativeSource={RelativeSource AncestorType=Window}}">
-                                <StackPanel>
-                                    <ItemsPresenter/>
-                                    <TextBlock Text="{Binding DataContext.BacklogStatus, RelativeSource={RelativeSource AncestorType=Window}}"
-                                               FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
-                                               FontFamily="{StaticResource ContentFont}"
-                                               HorizontalAlignment="Center" Margin="0,8,0,12"/>
-                                </StackPanel>
-                            </ScrollViewer>
-                        </ControlTemplate>
-                    </ItemsControl.Template>
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <VirtualizingStackPanel/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <StaticResource ResourceKey="JiraIssueTemplate"/>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                <ScrollViewer x:Name="BacklogScrollViewer" VerticalScrollBarVisibility="Auto" Padding="0,0,4,0">
+                    <StackPanel>
+                        <ItemsControl ItemsSource="{Binding BacklogIssues}"
+                                      VirtualizingStackPanel.IsVirtualizing="True">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <VirtualizingStackPanel/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <StaticResource ResourceKey="JiraIssueTemplate"/>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="{Binding BacklogStatus}"
+                                   FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
+                                   FontFamily="{StaticResource ContentFont}"
+                                   HorizontalAlignment="Center" Margin="0,8,0,12"/>
+                    </StackPanel>
+                </ScrollViewer>
             </DockPanel>
 
             <!-- My Activity -->
@@ -234,32 +227,25 @@ Title="DevSprint" Height="700" Width="1200">
                            Foreground="{StaticResource TextPrimaryBrush}"
                            FontFamily="{StaticResource ContentFont}"
                            Margin="0,0,0,12"/>
-                <ItemsControl ItemsSource="{Binding MyIssues}"
-                              VirtualizingStackPanel.IsVirtualizing="True"
-                              ScrollViewer.CanContentScroll="True">
-                    <ItemsControl.Template>
-                        <ControlTemplate TargetType="ItemsControl">
-                            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,4,0"
-                                          b:ScrollEndBehavior.Command="{Binding DataContext.ScrollMyIssuesCommand, RelativeSource={RelativeSource AncestorType=Window}}">
-                                <StackPanel>
-                                    <ItemsPresenter/>
-                                    <TextBlock Text="{Binding DataContext.MyIssuesStatus, RelativeSource={RelativeSource AncestorType=Window}}"
-                                               FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
-                                               FontFamily="{StaticResource ContentFont}"
-                                               HorizontalAlignment="Center" Margin="0,8,0,12"/>
-                                </StackPanel>
-                            </ScrollViewer>
-                        </ControlTemplate>
-                    </ItemsControl.Template>
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <VirtualizingStackPanel/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <StaticResource ResourceKey="JiraIssueTemplate"/>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                <ScrollViewer x:Name="MyIssuesScrollViewer" VerticalScrollBarVisibility="Auto" Padding="0,0,4,0">
+                    <StackPanel>
+                        <ItemsControl ItemsSource="{Binding MyIssues}"
+                                      VirtualizingStackPanel.IsVirtualizing="True">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <VirtualizingStackPanel/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <StaticResource ResourceKey="JiraIssueTemplate"/>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="{Binding MyIssuesStatus}"
+                                   FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
+                                   FontFamily="{StaticResource ContentFont}"
+                                   HorizontalAlignment="Center" Margin="0,8,0,12"/>
+                    </StackPanel>
+                </ScrollViewer>
             </DockPanel>
         </Grid>
     </Grid>
