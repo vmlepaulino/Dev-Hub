@@ -11,7 +11,11 @@
 
     <Window.Resources>
         <DataTemplate x:Key="JiraIssueTemplate">
-            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,6">
+            <Border Background="{StaticResource CardBrush}"
+                    CornerRadius="8" Padding="16,12" Margin="0,0,0,6"
+                    BorderThickness="1.5"
+                    BorderBrush="{Binding IsInCurrentSprint, Converter={StaticResource SprintBorderBrushConverter}}"
+                    Effect="{Binding IsInCurrentSprint, Converter={StaticResource SprintShadowConverter}}">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>

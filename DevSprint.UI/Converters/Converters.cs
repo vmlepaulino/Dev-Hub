@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Media;
+using System.Windows.Media.Effects;
 using DevSprint.UI.Models;
 
 namespace DevSprint.UI.Converters;
@@ -51,6 +52,35 @@ public sealed class StateHistoryConverter : IValueConverter
 
         return string.Join("  ?  ", grouped);
     }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
+public sealed class SprintBorderBrushConverter : IValueConverter
+{
+    private static readonly SolidColorBrush ActiveBrush = new(Color.FromRgb(0x00, 0x78, 0xD4));
+    private static readonly SolidColorBrush InactiveBrush = new(Color.FromRgb(0xD1, 0xD1, 0xD1));
+
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+        value is true ? ActiveBrush : InactiveBrush;
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
+public sealed class SprintShadowConverter : IValueConverter
+{
+    private static readonly DropShadowEffect ActiveShadow = new()
+    {
+        Color = Color.FromRgb(0x00, 0x78, 0xD4),
+        BlurRadius = 12,
+        ShadowDepth = 0,
+        Opacity = 0.3
+    };
+
+    public object? Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+        value is true ? ActiveShadow : null;
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
         throw new NotSupportedException();
