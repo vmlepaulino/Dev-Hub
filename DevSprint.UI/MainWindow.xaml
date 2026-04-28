@@ -1,13 +1,14 @@
 ﻿<Window x:Class="DevSprint.UI.MainWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:vm="clr-namespace:DevSprint.UI.ViewModels"
-        mc:Ignorable="d"
-        d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
-        Style="{StaticResource FluentWindow}"
-        Title="DevSprint" Height="700" Width="1200">
+xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+xmlns:vm="clr-namespace:DevSprint.UI.ViewModels"
+xmlns:b="clr-namespace:DevSprint.UI.Behaviors"
+mc:Ignorable="d"
+d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
+Style="{StaticResource FluentWindow}"
+Title="DevSprint" Height="700" Width="1200">
 
     <Window.Resources>
         <DataTemplate x:Key="JiraIssueTemplate">
@@ -203,18 +204,14 @@
                               ScrollViewer.CanContentScroll="True">
                     <ItemsControl.Template>
                         <ControlTemplate TargetType="ItemsControl">
-                            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,4,0">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,4,0"
+                                          b:ScrollEndBehavior.Command="{Binding DataContext.ScrollBacklogCommand, RelativeSource={RelativeSource AncestorType=Window}}">
                                 <StackPanel>
                                     <ItemsPresenter/>
                                     <TextBlock Text="{Binding DataContext.BacklogStatus, RelativeSource={RelativeSource AncestorType=Window}}"
                                                FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
                                                FontFamily="{StaticResource ContentFont}"
-                                               HorizontalAlignment="Center" Margin="0,8,0,4"/>
-                                    <Button Content="Load More"
-                                            Command="{Binding DataContext.LoadMoreBacklogCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                            Style="{StaticResource AccentButton}"
-                                            HorizontalAlignment="Center" Margin="0,0,0,12"
-                                            Visibility="{Binding DataContext.HasMoreBacklog, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                               HorizontalAlignment="Center" Margin="0,8,0,12"/>
                                 </StackPanel>
                             </ScrollViewer>
                         </ControlTemplate>
@@ -242,18 +239,14 @@
                               ScrollViewer.CanContentScroll="True">
                     <ItemsControl.Template>
                         <ControlTemplate TargetType="ItemsControl">
-                            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,4,0">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,4,0"
+                                          b:ScrollEndBehavior.Command="{Binding DataContext.ScrollMyIssuesCommand, RelativeSource={RelativeSource AncestorType=Window}}">
                                 <StackPanel>
                                     <ItemsPresenter/>
                                     <TextBlock Text="{Binding DataContext.MyIssuesStatus, RelativeSource={RelativeSource AncestorType=Window}}"
                                                FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
                                                FontFamily="{StaticResource ContentFont}"
-                                               HorizontalAlignment="Center" Margin="0,8,0,4"/>
-                                    <Button Content="Load More"
-                                            Command="{Binding DataContext.LoadMoreMyIssuesCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                            Style="{StaticResource AccentButton}"
-                                            HorizontalAlignment="Center" Margin="0,0,0,12"
-                                            Visibility="{Binding DataContext.HasMoreMyIssues, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                               HorizontalAlignment="Center" Margin="0,8,0,12"/>
                                 </StackPanel>
                             </ScrollViewer>
                         </ControlTemplate>

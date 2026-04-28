@@ -10,9 +10,17 @@ public partial class MainViewModel : ObservableObject
 {
     private readonly IJiraService _jiraService;
 
+    private const int InitialPageSize = 100;
+    private const int ScrollPageSize = 10;
+
     private int _backlogNextStartAt;
     private int _myIssuesNextStartAt;
     private int _commentedNextStartAt;
+    private bool _backlogHasMore;
+    private bool _myIssuesHasMore;
+    private bool _commentedHasMore;
+    private bool _isLoadingMoreBacklog;
+    private bool _isLoadingMoreMyIssues;
     private HashSet<string> _sprintKeys = [];
     private HashSet<string> _myIssueKeys = [];
 
@@ -27,12 +35,6 @@ public partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     private string _errorMessage = string.Empty;
-
-    [ObservableProperty]
-    private bool _hasMoreBacklog;
-
-    [ObservableProperty]
-    private bool _hasMoreMyIssues;
 
     [ObservableProperty]
     private string _backlogStatus = string.Empty;
@@ -57,15 +59,12 @@ public partial class MainViewModel : ObservableObject
         MyIssues.Clear();
         _sprintKeys = [];
         _myIssueKeys = [];
-        _backlogNextStartAt = 0;
-        _myIssuesNextStartAt = 0;
-        _commentedNextStartAt = 0;
 
         try
         {
-            var backlogTask = _jiraService.GetBacklogAsync(FromDate, ToDate, 0);
-            var assignedTask = _jiraService.GetMyIssuesAsync(FromDate, ToDate, 0);
-            var commentedTask = _jiraService.GetMyCommentedIssuesAsync(FromDate, ToDate, 0);
+            var backlogTask = _jiraService.GetBacklogAsync(FromDate, ToDate, 0, InitialPageSize);
+            var assignedTask = _jiraService.GetMyIssuesAsync(FromDate, ToDate, 0, InitialPageSize);
+            var commentedTask = _jiraService.GetMyCommentedIssuesAsync(FromDate, ToDate, 0, InitialPageSize);
 
             await Task.WhenAll(backlogTask, assignedTask, commentedTask);
 
@@ -73,7 +72,6 @@ public partial class MainViewModel : ObservableObject
             var assignedResult = assignedTask.Result;
             var commentedResult = commentedTask.Result;
 
-            // Track sprint keys
             foreach (var issue in backlogResult.Items)
             {
                 _sprintKeys.Add(issue.Key);
@@ -82,17 +80,17 @@ public partial class MainViewModel : ObservableObject
             }
 
             _backlogNextStartAt = backlogResult.NextStartAt;
-            HasMoreBacklog = backlogResult.HasMore;
+            _backlogHasMore = backlogResult.HasMore;
             BacklogStatus = $"Showing {BacklogIssues.Count} of {backlogResult.Total}";
 
-            // Merge assigned + commented
             AddMyIssues(assignedResult.Items);
             AddMyIssues(commentedResult.Items);
 
             _myIssuesNextStartAt = assignedResult.NextStartAt;
             _commentedNextStartAt = commentedResult.NextStartAt;
-            HasMoreMyIssues = assignedResult.HasMore || commentedResult.HasMore;
-            MyIssuesStatus = $"Showing {MyIssues.Count} of {assignedResult.Total + commentedResult.Total}";
+            _myIssuesHasMore = assignedResult.HasMore;
+            _commentedHasMore = commentedResult.HasMore;
+            UpdateMyIssuesStatus(assignedResult.Total, commentedResult.Total);
         }
         catch (Exception ex)
         {
@@ -105,14 +103,14 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task LoadMoreBacklogAsync()
+    private async Task ScrollBacklogAsync()
     {
-        if (!HasMoreBacklog) return;
-        IsLoading = true;
+        if (!_backlogHasMore || _isLoadingMoreBacklog) return;
+        _isLoadingMoreBacklog = true;
 
         try
         {
-            var result = await _jiraService.GetBacklogAsync(FromDate, ToDate, _backlogNextStartAt);
+            var result = await _jiraService.GetBacklogAsync(FromDate, ToDate, _backlogNextStartAt, ScrollPageSize);
 
             foreach (var issue in result.Items)
             {
@@ -122,7 +120,7 @@ public partial class MainViewModel : ObservableObject
             }
 
             _backlogNextStartAt = result.NextStartAt;
-            HasMoreBacklog = result.HasMore;
+            _backlogHasMore = result.HasMore;
             BacklogStatus = $"Showing {BacklogIssues.Count} of {result.Total}";
         }
         catch (Exception ex)
@@ -131,35 +129,35 @@ public partial class MainViewModel : ObservableObject
         }
         finally
         {
-            IsLoading = false;
+            _isLoadingMoreBacklog = false;
         }
     }
 
     [RelayCommand]
-    private async Task LoadMoreMyIssuesAsync()
+    private async Task ScrollMyIssuesAsync()
     {
-        if (!HasMoreMyIssues) return;
-        IsLoading = true;
+        if ((!_myIssuesHasMore && !_commentedHasMore) || _isLoadingMoreMyIssues) return;
+        _isLoadingMoreMyIssues = true;
 
         try
         {
-            var assignedResult = _myIssuesNextStartAt >= 0
-                ? await _jiraService.GetMyIssuesAsync(FromDate, ToDate, _myIssuesNextStartAt)
-                : new PagedResult<JiraIssue>();
+            if (_myIssuesHasMore)
+            {
+                var result = await _jiraService.GetMyIssuesAsync(FromDate, ToDate, _myIssuesNextStartAt, ScrollPageSize);
+                AddMyIssues(result.Items);
+                _myIssuesNextStartAt = result.NextStartAt;
+                _myIssuesHasMore = result.HasMore;
+            }
 
-            var commentedResult = _commentedNextStartAt >= 0
-                ? await _jiraService.GetMyCommentedIssuesAsync(FromDate, ToDate, _commentedNextStartAt)
-                : new PagedResult<JiraIssue>();
+            if (_commentedHasMore)
+            {
+                var result = await _jiraService.GetMyCommentedIssuesAsync(FromDate, ToDate, _commentedNextStartAt, ScrollPageSize);
+                AddMyIssues(result.Items);
+                _commentedNextStartAt = result.NextStartAt;
+                _commentedHasMore = result.HasMore;
+            }
 
-            AddMyIssues(assignedResult.Items);
-            AddMyIssues(commentedResult.Items);
-
-            _myIssuesNextStartAt = assignedResult.HasMore ? assignedResult.NextStartAt : -1;
-            _commentedNextStartAt = commentedResult.HasMore ? commentedResult.NextStartAt : -1;
-            HasMoreMyIssues = assignedResult.HasMore || commentedResult.HasMore;
-
-            var totalEstimate = assignedResult.Total + commentedResult.Total;
-            MyIssuesStatus = $"Showing {MyIssues.Count} of ~{totalEstimate}";
+            MyIssuesStatus = $"Showing {MyIssues.Count}";
         }
         catch (Exception ex)
         {
@@ -167,7 +165,7 @@ public partial class MainViewModel : ObservableObject
         }
         finally
         {
-            IsLoading = false;
+            _isLoadingMoreMyIssues = false;
         }
     }
 
@@ -179,5 +177,10 @@ public partial class MainViewModel : ObservableObject
             issue.IsCurrentSprint = _sprintKeys.Contains(issue.Key);
             MyIssues.Add(issue);
         }
+    }
+
+    private void UpdateMyIssuesStatus(int assignedTotal, int commentedTotal)
+    {
+        MyIssuesStatus = $"Showing {MyIssues.Count} of ~{assignedTotal + commentedTotal}";
     }
 }

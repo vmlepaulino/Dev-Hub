@@ -38,36 +38,36 @@ public sealed class JiraService : IJiraService
     }
 
 
-    public async Task<PagedResult<JiraIssue>> GetBacklogAsync(DateTime from, DateTime to, int startAt = 0, CancellationToken cancellationToken = default)
+
+    public async Task<PagedResult<JiraIssue>> GetBacklogAsync(DateTime from, DateTime to, int startAt = 0, int maxResults = 100, CancellationToken cancellationToken = default)
     {
         var fromStr = from.ToString("yyyy-MM-dd");
         var toStr = to.ToString("yyyy-MM-dd");
         var jql = $"project = {_projectKey} AND sprint in openSprints() AND updated >= \"{fromStr}\" AND updated <= \"{toStr}\" ORDER BY updated DESC";
 
-        return await SearchIssuesAsync(jql, startAt, cancellationToken);
+        return await SearchIssuesAsync(jql, startAt, maxResults, cancellationToken);
     }
 
-    public async Task<PagedResult<JiraIssue>> GetMyIssuesAsync(DateTime from, DateTime to, int startAt = 0, CancellationToken cancellationToken = default)
+    public async Task<PagedResult<JiraIssue>> GetMyIssuesAsync(DateTime from, DateTime to, int startAt = 0, int maxResults = 100, CancellationToken cancellationToken = default)
     {
         var fromStr = from.ToString("yyyy-MM-dd");
         var toStr = to.ToString("yyyy-MM-dd");
         var jql = $"assignee = currentUser() AND updated >= \"{fromStr}\" AND updated <= \"{toStr}\" ORDER BY created DESC";
 
-        return await SearchIssuesAsync(jql, startAt, cancellationToken);
+        return await SearchIssuesAsync(jql, startAt, maxResults, cancellationToken);
     }
 
-    public async Task<PagedResult<JiraIssue>> GetMyCommentedIssuesAsync(DateTime from, DateTime to, int startAt = 0, CancellationToken cancellationToken = default)
+    public async Task<PagedResult<JiraIssue>> GetMyCommentedIssuesAsync(DateTime from, DateTime to, int startAt = 0, int maxResults = 100, CancellationToken cancellationToken = default)
     {
         var fromStr = from.ToString("yyyy-MM-dd");
         var toStr = to.ToString("yyyy-MM-dd");
         var jql = $"comment ~ currentUser() AND updated >= \"{fromStr}\" AND updated <= \"{toStr}\" ORDER BY created DESC";
 
-        return await SearchIssuesAsync(jql, startAt, cancellationToken);
+        return await SearchIssuesAsync(jql, startAt, maxResults, cancellationToken);
     }
 
-    private async Task<PagedResult<JiraIssue>> SearchIssuesAsync(string jql, int startAt, CancellationToken cancellationToken)
+    private async Task<PagedResult<JiraIssue>> SearchIssuesAsync(string jql, int startAt, int maxResults, CancellationToken cancellationToken)
     {
-        const int maxResults = 50;
         var fields = "summary,status,assignee,priority,issuetype,created,updated,timespent,statuscategorychangedate,description,comment,customfield_10037";
         var url = $"rest/api/3/search/jql?jql={Uri.EscapeDataString(jql)}&fields={fields}&expand=changelog&startAt={startAt}&maxResults={maxResults}";
 
