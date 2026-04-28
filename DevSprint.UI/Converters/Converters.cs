@@ -52,6 +52,34 @@ public sealed class BoolToSignalIconConverter : IValueConverter
         throw new NotSupportedException();
 }
 
+public sealed class SprintBorderBrushConverter : IValueConverter
+{
+    private static readonly SolidColorBrush SprintBrush = CreateFrozen(0x00, 0x78, 0xD4); // Accent blue
+    private static readonly SolidColorBrush DefaultBrush = CreateFrozen(0xD0, 0xD0, 0xD0); // Light grey
+
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+        value is true ? SprintBrush : DefaultBrush;
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+
+    private static SolidColorBrush CreateFrozen(byte r, byte g, byte b)
+    {
+        var brush = new SolidColorBrush(Color.FromRgb(r, g, b));
+        brush.Freeze();
+        return brush;
+    }
+}
+
+public sealed class SprintShadowConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+        value is true ? 4.0 : 0.0;
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
 public sealed class StateHistoryConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)

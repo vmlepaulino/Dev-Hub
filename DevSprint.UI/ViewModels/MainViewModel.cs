@@ -46,8 +46,12 @@ public partial class MainViewModel : ObservableObject
 
             await Task.WhenAll(backlogTask, assignedTask, commentedTask);
 
+            // Mark current sprint items
+            var sprintKeys = new HashSet<string>(backlogTask.Result.Select(i => i.Key));
+
             foreach (var issue in backlogTask.Result)
             {
+                issue.IsCurrentSprint = true;
                 BacklogIssues.Add(issue);
             }
 
@@ -58,6 +62,7 @@ public partial class MainViewModel : ObservableObject
 
             foreach (var issue in myIssues)
             {
+                issue.IsCurrentSprint = sprintKeys.Contains(issue.Key);
                 MyIssues.Add(issue);
             }
         }

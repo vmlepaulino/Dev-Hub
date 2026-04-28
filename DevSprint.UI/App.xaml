@@ -12,6 +12,7 @@
             <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
             <converters:BoolToSignalBrushConverter x:Key="BoolToSignalBrushConverter"/>
             <converters:BoolToSignalIconConverter x:Key="BoolToSignalIconConverter"/>
+            <converters:SprintBorderBrushConverter x:Key="SprintBorderBrushConverter"/>
             <converters:StateHistoryConverter x:Key="StateHistoryConverter"/>
         </ResourceDictionary>
     </Application.Resources>

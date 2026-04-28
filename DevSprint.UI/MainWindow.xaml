@@ -11,8 +11,14 @@
 
     <Window.Resources>
         <DataTemplate x:Key="JiraIssueTemplate">
-            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,6">
-                <Grid>
+            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,6"
+                    Padding="0" ClipToBounds="True">
+                <DockPanel>
+                    <!-- Left accent strip: blue = current sprint, grey = other -->
+                    <Border DockPanel.Dock="Left" Width="5"
+                            CornerRadius="4,0,0,4"
+                            Background="{Binding IsCurrentSprint, Converter={StaticResource SprintBorderBrushConverter}}"/>
+                    <Grid Margin="14,12,16,12">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
@@ -129,6 +135,7 @@
                                    FontFamily="{StaticResource ContentFont}"/>
                     </StackPanel>
                 </Grid>
+                </DockPanel>
             </Border>
         </DataTemplate>
     </Window.Resources>
