@@ -1,4 +1,6 @@
-﻿using System.Windows;
+﻿using System.Diagnostics;
+using System.Windows;
+using System.Windows.Navigation;
 using DevSprint.UI.ViewModels;
 
 namespace DevSprint.UI
@@ -9,6 +11,12 @@ namespace DevSprint.UI
         {
             InitializeComponent();
             DataContext = viewModel;
+        }
+
+        private void Hyperlink_RequestNavigate(object sender, RequestNavigateEventArgs e)
+        {
+            Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
+            e.Handled = true;
         }
     }
 }

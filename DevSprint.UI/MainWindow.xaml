@@ -28,9 +28,15 @@
                             Background="#EFF6FC" CornerRadius="4"
                             Padding="10,5" Margin="0,0,14,0"
                             VerticalAlignment="Center">
-                        <TextBlock Text="{Binding Key}" FontWeight="SemiBold"
-                                   Foreground="{StaticResource AccentBrush}" FontSize="12"
-                                   FontFamily="{StaticResource ContentFont}"/>
+                        <TextBlock FontWeight="SemiBold" FontSize="12"
+                                   FontFamily="{StaticResource ContentFont}">
+                            <Hyperlink NavigateUri="{Binding BrowseUrl}"
+                                       RequestNavigate="Hyperlink_RequestNavigate"
+                                       Foreground="{StaticResource AccentBrush}"
+                                       TextDecorations="None">
+                                <Run Text="{Binding Key, Mode=OneWay}"/>
+                            </Hyperlink>
+                        </TextBlock>
                     </Border>
 
                     <TextBlock Grid.Column="1" Grid.Row="0"

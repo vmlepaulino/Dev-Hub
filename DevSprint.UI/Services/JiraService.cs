@@ -12,6 +12,7 @@ public sealed class JiraService : IJiraService
     private readonly HttpClient _httpClient;
     private readonly string _boardId;
     private readonly string _projectKey;
+    private readonly string _baseUrl;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -33,6 +34,7 @@ public sealed class JiraService : IJiraService
 
         _boardId = configuration["Jira:BoardId"]!;
         _projectKey = configuration["Jira:ProjectKey"]!;
+        _baseUrl = baseUrl;
     }
 
     public async Task<IReadOnlyList<JiraIssue>> GetBacklogAsync(DateTime from, DateTime to, CancellationToken cancellationToken = default)
@@ -85,7 +87,7 @@ public sealed class JiraService : IJiraService
 
             foreach (var item in issuesArray.EnumerateArray())
             {
-                issues.Add(MapIssue(item));
+                issues.Add(MapIssue(item, _baseUrl));
             }
 
             if (!root.TryGetProperty("total", out var totalElement) || startAt + maxResults >= totalElement.GetInt32())
@@ -97,14 +99,17 @@ public sealed class JiraService : IJiraService
         return issues;
     }
 
-    private static JiraIssue MapIssue(JsonElement issue)
+    private static JiraIssue MapIssue(JsonElement issue, string baseUrl)
     {
+        var key = GetStringOrDefault(issue, "key");
+
         if (!issue.TryGetProperty("fields", out var fields))
-            return new JiraIssue { Key = GetStringOrDefault(issue, "key") };
+            return new JiraIssue { Key = key, BrowseUrl = $"{baseUrl}browse/{key}" };
 
         return new JiraIssue
         {
-            Key = GetStringOrDefault(issue, "key"),
+            Key = key,
+            BrowseUrl = $"{baseUrl}browse/{key}",
             Summary = GetStringOrDefault(fields, "summary"),
             Status = GetNestedStringOrDefault(fields, "status", "name"),
             Assignee = GetNestedStringOrDefault(fields, "assignee", "displayName"),
