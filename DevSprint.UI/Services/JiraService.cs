@@ -71,7 +71,7 @@ public sealed class JiraService : IJiraService
 
         while (true)
         {
-            var fields = "summary,status,assignee,priority,issuetype,created,updated,timespent,statuscategorychangedate";
+            var fields = "summary,status,assignee,priority,issuetype,created,updated,timespent,statuscategorychangedate,description,comment,customfield_10037";
             var url = $"rest/api/3/search/jql?jql={Uri.EscapeDataString(jql)}&fields={fields}&startAt={startAt}&maxResults={maxResults}";
             using var response = await _httpClient.GetAsync(url, cancellationToken);
             response.EnsureSuccessStatusCode();
@@ -115,7 +115,11 @@ public sealed class JiraService : IJiraService
             TimeSpent = fields.TryGetProperty("timespent", out var timeSpent) && timeSpent.ValueKind == JsonValueKind.Number
                 ? FormatSeconds(timeSpent.GetInt32())
                 : string.Empty,
-            DaysInCurrentState = GetDaysInState(fields)
+            DaysInCurrentState = GetDaysInState(fields),
+            HasDescription = HasContent(fields, "description"),
+            HasAcceptanceCriteria = HasContent(fields, "customfield_10037"),
+            HasComments = GetCommentCount(fields) > 0,
+            CommentCount = GetCommentCount(fields)
         };
     }
 
@@ -140,6 +144,34 @@ public sealed class JiraService : IJiraService
             && DateTime.TryParse(prop.GetString(), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var date)
             ? date
             : DateTime.MinValue;
+    }
+
+    private static bool HasContent(JsonElement fields, string propertyName)
+    {
+        if (!fields.TryGetProperty(propertyName, out var prop))
+            return false;
+
+        return prop.ValueKind switch
+        {
+            JsonValueKind.String => !string.IsNullOrWhiteSpace(prop.GetString()),
+            JsonValueKind.Object => true,
+            JsonValueKind.Null => false,
+            _ => false
+        };
+    }
+
+    private static int GetCommentCount(JsonElement fields)
+    {
+        if (!fields.TryGetProperty("comment", out var comment) || comment.ValueKind != JsonValueKind.Object)
+            return 0;
+
+        if (comment.TryGetProperty("total", out var total) && total.ValueKind == JsonValueKind.Number)
+            return total.GetInt32();
+
+        if (comment.TryGetProperty("comments", out var comments) && comments.ValueKind == JsonValueKind.Array)
+            return comments.GetArrayLength();
+
+        return 0;
     }
 
     private static int GetDaysInState(JsonElement fields)

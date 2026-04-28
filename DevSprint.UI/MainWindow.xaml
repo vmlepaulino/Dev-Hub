@@ -21,9 +21,10 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <Border Grid.Column="0" Grid.RowSpan="2"
+                    <Border Grid.Column="0" Grid.RowSpan="3"
                             Background="#EFF6FC" CornerRadius="4"
                             Padding="10,5" Margin="0,0,14,0"
                             VerticalAlignment="Center">
@@ -65,7 +66,30 @@
                                    FontFamily="{StaticResource ContentFont}"/>
                     </StackPanel>
 
-                    <StackPanel Grid.Column="2" Grid.RowSpan="2"
+                    <!-- Quality signals -->
+                    <StackPanel Grid.Column="1" Grid.Row="2" Orientation="Horizontal"
+                                Margin="0,6,0,0">
+                        <Border CornerRadius="3" Padding="6,2" Margin="0,0,6,0"
+                                Background="{Binding HasDescription, Converter={StaticResource BoolToSignalBrushConverter}}">
+                            <TextBlock Text="Description" FontSize="11" Foreground="White"
+                                       FontFamily="{StaticResource ContentFont}"/>
+                        </Border>
+                        <Border CornerRadius="3" Padding="6,2" Margin="0,0,6,0"
+                                Background="{Binding HasAcceptanceCriteria, Converter={StaticResource BoolToSignalBrushConverter}}">
+                            <TextBlock Text="Acceptance Criteria" FontSize="11" Foreground="White"
+                                       FontFamily="{StaticResource ContentFont}"/>
+                        </Border>
+                        <Border CornerRadius="3" Padding="6,2"
+                                Background="{Binding HasComments, Converter={StaticResource BoolToSignalBrushConverter}}">
+                            <TextBlock FontSize="11" Foreground="White"
+                                       FontFamily="{StaticResource ContentFont}">
+                                <Run Text="Comments"/>
+                                <Run Text="{Binding CommentCount, StringFormat='({0})', Mode=OneWay}"/>
+                            </TextBlock>
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2" Grid.RowSpan="3"
                                 VerticalAlignment="Center" HorizontalAlignment="Right"
                                 Margin="14,0,0,0">
                         <TextBlock Text="{Binding TimeSpent, TargetNullValue='-', FallbackValue='-'}"
