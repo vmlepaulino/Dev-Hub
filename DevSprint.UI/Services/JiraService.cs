@@ -41,7 +41,7 @@ public sealed class JiraService : IJiraService
     {
         var fromStr = from.ToString("yyyy-MM-dd");
         var toStr = to.ToString("yyyy-MM-dd");
-        var jql = $"project = {_projectKey} AND sprint in openSprints() AND updated >= \"{fromStr}\" AND updated <= \"{toStr}\" ORDER BY created DESC";
+        var jql = $"project = {_projectKey} AND sprint in openSprints() AND updated >= \"{fromStr}\" AND updated <= \"{toStr}\" ORDER BY updated DESC";
 
         return await SearchIssuesAsync(jql, cancellationToken);
     }
@@ -74,7 +74,7 @@ public sealed class JiraService : IJiraService
         while (true)
         {
             var fields = "summary,status,assignee,priority,issuetype,created,updated,timespent,statuscategorychangedate,description,comment,customfield_10037";
-            var url = $"rest/api/3/search/jql?jql={Uri.EscapeDataString(jql)}&fields={fields}&startAt={startAt}&maxResults={maxResults}";
+            var url = $"rest/api/3/search/jql?jql={Uri.EscapeDataString(jql)}&fields={fields}&expand=changelog&startAt={startAt}&maxResults={maxResults}";
             using var response = await _httpClient.GetAsync(url, cancellationToken);
             response.EnsureSuccessStatusCode();
 
@@ -121,6 +121,7 @@ public sealed class JiraService : IJiraService
                 ? FormatSeconds(timeSpent.GetInt32())
                 : string.Empty,
             DaysInCurrentState = GetDaysInState(fields),
+            StateHistory = BuildStateHistory(issue, fields),
             HasDescription = HasContent(fields, "description"),
             HasAcceptanceCriteria = HasContent(fields, "customfield_10037"),
             HasComments = GetCommentCount(fields) > 0,
@@ -185,6 +186,61 @@ public sealed class JiraService : IJiraService
         return stateChangeDate > DateTime.MinValue
             ? (int)(DateTime.UtcNow - stateChangeDate.ToUniversalTime()).TotalDays
             : 0;
+    }
+
+    private static List<StateTransition> BuildStateHistory(JsonElement issue, JsonElement fields)
+    {
+        var transitions = new List<StateTransition>();
+
+        if (!issue.TryGetProperty("changelog", out var changelog) ||
+            !changelog.TryGetProperty("histories", out var histories))
+            return transitions;
+
+        // Collect all status changes sorted by date
+        var statusChanges = new List<(string FromStatus, string ToStatus, DateTime Date)>();
+
+        foreach (var history in histories.EnumerateArray())
+        {
+            var historyDate = GetDateOrDefault(history, "created");
+            if (historyDate == DateTime.MinValue) continue;
+
+            if (!history.TryGetProperty("items", out var items)) continue;
+
+            foreach (var item in items.EnumerateArray())
+            {
+                var fieldName = GetStringOrDefault(item, "field");
+                if (!string.Equals(fieldName, "status", StringComparison.OrdinalIgnoreCase)) continue;
+
+                var fromStatus = GetStringOrDefault(item, "fromString");
+                var toStatus = GetStringOrDefault(item, "toString");
+
+                statusChanges.Add((fromStatus, toStatus, historyDate));
+            }
+        }
+
+        if (statusChanges.Count == 0)
+            return transitions;
+
+        statusChanges.Sort((a, b) => a.Date.CompareTo(b.Date));
+
+        // Calculate days in each state
+        for (var i = 0; i < statusChanges.Count; i++)
+        {
+            var current = statusChanges[i];
+            var nextDate = i + 1 < statusChanges.Count
+                ? statusChanges[i + 1].Date
+                : DateTime.UtcNow;
+
+            transitions.Add(new StateTransition
+            {
+                FromStatus = current.FromStatus,
+                ToStatus = current.ToStatus,
+                TransitionDate = current.Date,
+                DaysInState = (int)(nextDate - current.Date).TotalDays
+            });
+        }
+
+        return transitions;
     }
 
     private static string FormatSeconds(int totalSeconds)

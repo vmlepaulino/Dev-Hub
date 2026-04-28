@@ -13,6 +13,7 @@ public sealed class JiraIssue
     public DateTime Created { get; set; }
     public string TimeSpent { get; set; } = string.Empty;
     public int DaysInCurrentState { get; set; }
+    public List<StateTransition> StateHistory { get; set; } = [];
     public bool HasDescription { get; set; }
     public bool HasAcceptanceCriteria { get; set; }
     public bool HasComments { get; set; }

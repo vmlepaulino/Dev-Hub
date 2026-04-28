@@ -11,6 +11,7 @@
             <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
             <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
             <converters:BoolToSignalBrushConverter x:Key="BoolToSignalBrushConverter"/>
+            <converters:StateHistoryConverter x:Key="StateHistoryConverter"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

@@ -22,9 +22,10 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <Border Grid.Column="0" Grid.RowSpan="3"
+                    <Border Grid.Column="0" Grid.RowSpan="4"
                             Background="#EFF6FC" CornerRadius="4"
                             Padding="10,5" Margin="0,0,14,0"
                             VerticalAlignment="Center">
@@ -95,7 +96,14 @@
                         </Border>
                     </StackPanel>
 
-                    <StackPanel Grid.Column="2" Grid.RowSpan="3"
+                    <!-- State history -->
+                    <TextBlock Grid.Column="1" Grid.Row="3"
+                               Text="{Binding StateHistory, Converter={StaticResource StateHistoryConverter}}"
+                               FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
+                               FontFamily="{StaticResource ContentFont}"
+                               Margin="0,5,0,0" TextWrapping="Wrap"/>
+
+                    <StackPanel Grid.Column="2" Grid.RowSpan="4"
                                 VerticalAlignment="Center" HorizontalAlignment="Right"
                                 Margin="14,0,0,0">
                         <TextBlock Text="{Binding TimeSpent, TargetNullValue='-', FallbackValue='-'}"
