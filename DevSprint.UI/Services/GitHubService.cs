@@ -208,4 +208,136 @@ public sealed class GitHubService : IGitHubService
             ? date
             : DateTime.MinValue;
     }
+
+    public async Task<IReadOnlyList<BranchInfo>> GetBranchesForIssueAsync(string issueKey, CancellationToken cancellationToken = default)
+    {
+        var branches = new List<BranchInfo>();
+        var pattern = issueKey.ToLowerInvariant();
+
+        foreach (var repo in _repositories)
+        {
+            var page = 1;
+            while (true)
+            {
+                var url = $"repos/{_organization}/{repo}/branches?per_page=100&page={page}";
+                using var response = await _httpClient.GetAsync(url, cancellationToken);
+                if (!response.IsSuccessStatusCode) break;
+
+                var json = await response.Content.ReadAsStringAsync(cancellationToken);
+                using var doc = JsonDocument.Parse(json);
+                var array = doc.RootElement;
+
+                foreach (var branch in array.EnumerateArray())
+                {
+                    var name = GetString(branch, "name");
+                    if (!name.Contains(pattern, StringComparison.OrdinalIgnoreCase)) continue;
+
+                    var commitSha = string.Empty;
+                    var commitDate = DateTime.MinValue;
+                    var commitAuthor = string.Empty;
+
+                    if (branch.TryGetProperty("commit", out var commit))
+                    {
+                        commitSha = GetString(commit, "sha");
+                        if (commitSha.Length > 7) commitSha = commitSha[..7];
+
+                        // Fetch commit details for date and author
+                        var commitUrl = GetString(commit, "url");
+                        if (!string.IsNullOrEmpty(commitUrl))
+                        {
+                            var relativeUrl = commitUrl.Replace("https://api.github.com/", "");
+                            using var commitResponse = await _httpClient.GetAsync(relativeUrl, cancellationToken);
+                            if (commitResponse.IsSuccessStatusCode)
+                            {
+                                var commitJson = await commitResponse.Content.ReadAsStringAsync(cancellationToken);
+                                using var commitDoc = JsonDocument.Parse(commitJson);
+                                var commitRoot = commitDoc.RootElement;
+
+                                if (commitRoot.TryGetProperty("commit", out var commitData))
+                                {
+                                    if (commitData.TryGetProperty("author", out var author))
+                                    {
+                                        commitAuthor = GetString(author, "name");
+                                        commitDate = GetDate(author, "date");
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    branches.Add(new BranchInfo
+                    {
+                        Name = name,
+                        Repository = repo,
+                        LastCommitSha = commitSha,
+                        LastCommitAuthor = commitAuthor,
+                        LastCommitDate = commitDate
+                    });
+                }
+
+                if (array.GetArrayLength() < 100) break;
+                page++;
+            }
+        }
+
+        return branches;
+    }
+
+    public async Task<IReadOnlyList<TeamMember>> GetContributorsForIssueAsync(string issueKey, CancellationToken cancellationToken = default)
+    {
+        var members = new Dictionary<string, TeamMember>(StringComparer.OrdinalIgnoreCase);
+        var pattern = issueKey.ToLowerInvariant();
+
+        foreach (var repo in _repositories)
+        {
+            // Search PRs related to this issue
+            var query = $"{issueKey}+repo:{_organization}/{repo}+type:pr";
+            var url = $"search/issues?q={query}&per_page=100";
+            using var response = await _httpClient.GetAsync(url, cancellationToken);
+            if (!response.IsSuccessStatusCode) continue;
+
+            var json = await response.Content.ReadAsStringAsync(cancellationToken);
+            using var doc = JsonDocument.Parse(json);
+
+            if (!doc.RootElement.TryGetProperty("items", out var items)) continue;
+
+            foreach (var pr in items.EnumerateArray())
+            {
+                // PR author = contributing
+                if (pr.TryGetProperty("user", out var user))
+                {
+                    var login = GetString(user, "login");
+                    if (!string.IsNullOrEmpty(login) && !members.ContainsKey(login))
+                    {
+                        members[login] = new TeamMember
+                        {
+                            Name = login,
+                            AvatarUrl = GetString(user, "avatar_url"),
+                            Role = "Contributing"
+                        };
+                    }
+                }
+
+                // Assignees = reviewers/reporters
+                if (pr.TryGetProperty("assignees", out var assignees))
+                {
+                    foreach (var assignee in assignees.EnumerateArray())
+                    {
+                        var login = GetString(assignee, "login");
+                        if (!string.IsNullOrEmpty(login) && !members.ContainsKey(login))
+                        {
+                            members[login] = new TeamMember
+                            {
+                                Name = login,
+                                AvatarUrl = GetString(assignee, "avatar_url"),
+                                Role = "Reviewer"
+                            };
+                        }
+                    }
+                }
+            }
+        }
+
+        return members.Values.ToList();
+    }
 }

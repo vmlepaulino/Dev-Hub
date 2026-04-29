@@ -9,6 +9,7 @@ namespace DevSprint.UI.ViewModels;
 public partial class MainViewModel : ObservableObject
 {
     private readonly IJiraService _jiraService;
+    private readonly IGitHubService _gitHubService;
 
     private const int InitialPageSize = 100;
     private const int ScrollPageSize = 10;
@@ -77,14 +78,21 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private bool _isSidebarOpen;
 
+    [ObservableProperty]
+    private bool _isSidebarLoading;
+
+    public ObservableCollection<TeamMember> SidebarTeamMembers { get; } = [];
+    public ObservableCollection<BranchInfo> SidebarBranches { get; } = [];
+
     public ObservableCollection<JiraIssue> BacklogIssues { get; } = [];
     public ObservableCollection<JiraIssue> SprintIssues { get; } = [];
     public ObservableCollection<JiraIssue> AssignedIssues { get; } = [];
     public ObservableCollection<JiraIssue> ContributingIssues { get; } = [];
 
-    public MainViewModel(IJiraService jiraService)
+    public MainViewModel(IJiraService jiraService, IGitHubService gitHubService)
     {
         _jiraService = jiraService;
+        _gitHubService = gitHubService;
     }
 
     [RelayCommand]
@@ -264,11 +272,49 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void SelectIssue(JiraIssue? issue)
+    private async Task SelectIssueAsync(JiraIssue? issue)
     {
         if (issue is null) return;
         SelectedIssue = issue;
         IsSidebarOpen = true;
+        IsSidebarLoading = true;
+        SidebarTeamMembers.Clear();
+        SidebarBranches.Clear();
+
+        try
+        {
+            // Add Jira assignee as team member
+            if (!string.IsNullOrEmpty(issue.Assignee))
+            {
+                SidebarTeamMembers.Add(new TeamMember
+                {
+                    Name = issue.Assignee,
+                    Role = "Assignee"
+                });
+            }
+
+            var branchesTask = _gitHubService.GetBranchesForIssueAsync(issue.Key);
+            var contributorsTask = _gitHubService.GetContributorsForIssueAsync(issue.Key);
+
+            await Task.WhenAll(branchesTask, contributorsTask);
+
+            foreach (var member in contributorsTask.Result)
+            {
+                if (!SidebarTeamMembers.Any(m => m.Name.Equals(member.Name, StringComparison.OrdinalIgnoreCase)))
+                    SidebarTeamMembers.Add(member);
+            }
+
+            foreach (var branch in branchesTask.Result)
+                SidebarBranches.Add(branch);
+        }
+        catch
+        {
+            // Silently handle — sidebar shows what we have
+        }
+        finally
+        {
+            IsSidebarLoading = false;
+        }
     }
 
     [RelayCommand]

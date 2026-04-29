@@ -358,20 +358,84 @@ Title="Team Hub" Height="700" Width="1200">
                 <!-- Sidebar Tabs -->
                 <TabControl Grid.Row="2" Style="{StaticResource OutlookTabControl}">
                     <TabItem Style="{StaticResource OutlookTabItem}" Header="Team Members">
-                        <StackPanel Margin="0,12,0,0">
-                            <TextBlock Text="Team members will appear here"
-                                       FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"
-                                       FontFamily="{StaticResource ContentFont}"/>
-                        </StackPanel>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,12,0,0">
+                            <ItemsControl ItemsSource="{Binding SidebarTeamMembers}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{StaticResource SubtleFillBrush}"
+                                                CornerRadius="6" Padding="12,10" Margin="0,0,0,6">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Border Width="32" Height="32" CornerRadius="16"
+                                                        Background="{StaticResource AccentBrush}" Margin="0,0,12,0">
+                                                    <TextBlock Text="{Binding Name[0]}" FontSize="14"
+                                                               Foreground="White" FontWeight="SemiBold"
+                                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                               FontFamily="{StaticResource ContentFont}"/>
+                                                </Border>
+                                                <StackPanel VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold"
+                                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                                               FontFamily="{StaticResource ContentFont}"/>
+                                                    <TextBlock Text="{Binding Role}" FontSize="11"
+                                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                                               FontFamily="{StaticResource ContentFont}"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
                     </TabItem>
                     <TabItem Style="{StaticResource OutlookTabItem}" Header="Code">
-                        <StackPanel Margin="0,12,0,0">
-                            <TextBlock Text="Branches and commits will appear here"
-                                       FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"
-                                       FontFamily="{StaticResource ContentFont}"/>
-                        </StackPanel>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,12,0,0">
+                            <ItemsControl ItemsSource="{Binding SidebarBranches}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{StaticResource SubtleFillBrush}"
+                                                CornerRadius="6" Padding="12,10" Margin="0,0,0,6">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold"
+                                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                                           FontFamily="{StaticResource ContentFont}"
+                                                           TextWrapping="Wrap"/>
+                                                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                    <TextBlock Text="{Binding Repository}" FontSize="11"
+                                                               Foreground="{StaticResource AccentBrush}"
+                                                               FontFamily="{StaticResource ContentFont}"/>
+                                                    <TextBlock Text="·" Margin="6,0" FontSize="11"
+                                                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                    <TextBlock Text="{Binding LastCommitSha}" FontSize="11"
+                                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                                               FontFamily="Consolas, Courier New"/>
+                                                </StackPanel>
+                                                <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                                    <TextBlock Text="{Binding LastCommitAuthor}" FontSize="11"
+                                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                                               FontFamily="{StaticResource ContentFont}"/>
+                                                    <TextBlock Text="·" Margin="6,0" FontSize="11"
+                                                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                    <TextBlock Text="{Binding LastCommitDate, StringFormat='{}{0:dd/MM/yyyy HH:mm}'}"
+                                                               FontSize="11"
+                                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                                               FontFamily="{StaticResource ContentFont}"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
                     </TabItem>
                 </TabControl>
+
+                <!-- Sidebar loading indicator -->
+                <TextBlock Grid.Row="2" Text="Loading…" FontSize="12"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           FontFamily="{StaticResource ContentFont}"
+                           HorizontalAlignment="Center" Margin="0,20,0,0"
+                           Visibility="{Binding IsSidebarLoading, Converter={StaticResource BoolToVisibilityConverter}}"
+                           Panel.ZIndex="5"/>
             </Grid>
         </Border>
     </Grid>
