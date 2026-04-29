@@ -209,25 +209,26 @@
     <Style x:Key="OutlookTabItem" TargetType="TabItem">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="Padding" Value="4,12,4,12"/>
+        <Setter Property="Padding" Value="8,14,8,14"/>
         <Setter Property="Margin" Value="0,0,64,0"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="FontFamily" Value="{StaticResource ContentFont}"/>
-        <Setter Property="FontSize" Value="15"/>
+        <Setter Property="FontSize" Value="16"/>
         <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="TabItem">
-                    <Grid Background="Transparent">
+                    <Grid Background="Transparent" MinWidth="80">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="*"/>
                             <RowDefinition Height="3"/>
                         </Grid.RowDefinitions>
                         <ContentPresenter Grid.Row="0"
                                           ContentSource="Header"
-                                          HorizontalAlignment="Center"
+                                          HorizontalAlignment="Stretch"
                                           VerticalAlignment="Center"
                                           Margin="{TemplateBinding Padding}"
+                                          RecognizesAccessKey="True"
                                           TextBlock.FontFamily="{TemplateBinding FontFamily}"
                                           TextBlock.FontSize="{TemplateBinding FontSize}"
                                           TextBlock.Foreground="{TemplateBinding Foreground}"
