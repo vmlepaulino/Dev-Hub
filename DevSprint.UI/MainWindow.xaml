@@ -8,7 +8,7 @@ xmlns:b="clr-namespace:DevSprint.UI.Behaviors"
 mc:Ignorable="d"
 d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
 Style="{StaticResource FluentWindow}"
-Title="DevSprint" Height="700" Width="1200">
+Title="Team Hub" Height="700" Width="1200">
 
     <Window.Resources>
         <DataTemplate x:Key="JiraIssueTemplate">
@@ -146,7 +146,7 @@ Title="DevSprint" Height="700" Width="1200">
         </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,16">
-            <TextBlock Text="DevSprint" FontSize="32" FontWeight="SemiBold"
+            <TextBlock Text="Team Hub" FontSize="32" FontWeight="SemiBold"
                        Foreground="{StaticResource TextPrimaryBrush}"
                        FontFamily="{StaticResource ContentFont}" VerticalAlignment="Center"/>
             <TextBlock Text="⟳" FontSize="20" Margin="20,0,0,0"
