@@ -355,11 +355,23 @@ Title="Team Hub" Height="700" Width="1200">
                     </StackPanel>
                 </DockPanel>
 
-                <!-- Placeholder for tabs (Iteration 2) -->
-                <TextBlock Grid.Row="2" Text="Details will appear here"
-                           FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"
-                           FontFamily="{StaticResource ContentFont}"
-                           VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                <!-- Sidebar Tabs -->
+                <TabControl Grid.Row="2" Style="{StaticResource OutlookTabControl}">
+                    <TabItem Style="{StaticResource OutlookTabItem}" Header="Team Members">
+                        <StackPanel Margin="0,12,0,0">
+                            <TextBlock Text="Team members will appear here"
+                                       FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontFamily="{StaticResource ContentFont}"/>
+                        </StackPanel>
+                    </TabItem>
+                    <TabItem Style="{StaticResource OutlookTabItem}" Header="Code">
+                        <StackPanel Margin="0,12,0,0">
+                            <TextBlock Text="Branches and commits will appear here"
+                                       FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontFamily="{StaticResource ContentFont}"/>
+                        </StackPanel>
+                    </TabItem>
+                </TabControl>
             </Grid>
         </Border>
     </Grid>
