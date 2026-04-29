@@ -71,6 +71,12 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string _contributingStatus = string.Empty;
 
+    [ObservableProperty]
+    private JiraIssue? _selectedIssue;
+
+    [ObservableProperty]
+    private bool _isSidebarOpen;
+
     public ObservableCollection<JiraIssue> BacklogIssues { get; } = [];
     public ObservableCollection<JiraIssue> SprintIssues { get; } = [];
     public ObservableCollection<JiraIssue> AssignedIssues { get; } = [];
@@ -255,5 +261,20 @@ public partial class MainViewModel : ObservableObject
         var groups = SprintIssues.GroupBy(i => i.Status).OrderBy(g => g.Key).Select(g => $"{g.Key}: {g.Count()}");
         SprintStateSummary = string.Join("  ·  ", groups);
         SprintStatus = $"Showing {SprintIssues.Count}  ·  {SprintTotalStoryPoints} SP";
+    }
+
+    [RelayCommand]
+    private void SelectIssue(JiraIssue? issue)
+    {
+        if (issue is null) return;
+        SelectedIssue = issue;
+        IsSidebarOpen = true;
+    }
+
+    [RelayCommand]
+    private void CloseSidebar()
+    {
+        IsSidebarOpen = false;
+        SelectedIssue = null;
     }
 }

@@ -13,7 +13,12 @@ Title="Team Hub" Height="700" Width="1200">
     <Window.Resources>
         <DataTemplate x:Key="JiraIssueTemplate">
             <Border Style="{StaticResource CardBorder}" Margin="0,0,0,6"
-                    Padding="0" ClipToBounds="True">
+                    Padding="0" ClipToBounds="True" Cursor="Hand">
+                <Border.InputBindings>
+                    <MouseBinding MouseAction="LeftClick"
+                                  Command="{Binding DataContext.SelectIssueCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                  CommandParameter="{Binding}"/>
+                </Border.InputBindings>
                 <DockPanel>
                     <Border DockPanel.Dock="Left" Width="5"
                             CornerRadius="4,0,0,4"
@@ -312,5 +317,50 @@ Title="Team Hub" Height="700" Width="1200">
                 </DockPanel>
             </TabItem>
         </TabControl>
+
+        <!-- Right Sidebar -->
+        <Border Grid.Row="0" Grid.RowSpan="4"
+                HorizontalAlignment="Right"
+                Width="380"
+                Background="{StaticResource CardBrush}"
+                BorderBrush="{StaticResource CardBorderBrush}"
+                BorderThickness="1,0,0,0"
+                Visibility="{Binding IsSidebarOpen, Converter={StaticResource BoolToVisibilityConverter}}"
+                Panel.ZIndex="10">
+            <Grid Margin="20,20">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Header with close button -->
+                <DockPanel Grid.Row="0" Margin="0,0,0,16">
+                    <Button DockPanel.Dock="Right" Content="✕" 
+                            Command="{Binding CloseSidebarCommand}"
+                            Background="Transparent" BorderThickness="0"
+                            FontSize="16" Foreground="{StaticResource TextSecondaryBrush}"
+                            Cursor="Hand" Padding="8,4"
+                            VerticalAlignment="Top"/>
+                    <StackPanel>
+                        <TextBlock Text="{Binding SelectedIssue.Key}" FontSize="13"
+                                   Foreground="{StaticResource AccentBrush}"
+                                   FontFamily="{StaticResource ContentFont}"
+                                   FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding SelectedIssue.Summary}" FontSize="15"
+                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   FontFamily="{StaticResource ContentFont}"
+                                   FontWeight="SemiBold" TextWrapping="Wrap"
+                                   Margin="0,4,0,0"/>
+                    </StackPanel>
+                </DockPanel>
+
+                <!-- Placeholder for tabs (Iteration 2) -->
+                <TextBlock Grid.Row="2" Text="Details will appear here"
+                           FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"
+                           FontFamily="{StaticResource ContentFont}"
+                           VerticalAlignment="Center" HorizontalAlignment="Center"/>
+            </Grid>
+        </Border>
     </Grid>
 </Window>
