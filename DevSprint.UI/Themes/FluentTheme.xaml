@@ -218,21 +218,18 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="TabItem">
-                    <Grid Background="Transparent" MinWidth="80">
+                    <Grid Background="Transparent">
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
                             <RowDefinition Height="3"/>
                         </Grid.RowDefinitions>
-                        <ContentPresenter Grid.Row="0"
-                                          ContentSource="Header"
-                                          HorizontalAlignment="Stretch"
-                                          VerticalAlignment="Center"
-                                          Margin="{TemplateBinding Padding}"
-                                          RecognizesAccessKey="True"
-                                          TextBlock.FontFamily="{TemplateBinding FontFamily}"
-                                          TextBlock.FontSize="{TemplateBinding FontSize}"
-                                          TextBlock.Foreground="{TemplateBinding Foreground}"
-                                          TextBlock.FontWeight="SemiBold"/>
+                        <TextBlock x:Name="HeaderText" Grid.Row="0"
+                                   Text="{TemplateBinding Header}"
+                                   FontFamily="{TemplateBinding FontFamily}"
+                                   FontSize="{TemplateBinding FontSize}"
+                                   Foreground="{TemplateBinding Foreground}"
+                                   FontWeight="SemiBold"
+                                   Margin="{TemplateBinding Padding}"/>
                         <Border x:Name="Indicator" Grid.Row="1"
                                 Background="Transparent"
                                 CornerRadius="1.5"
@@ -240,7 +237,7 @@
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsSelected" Value="True">
-                            <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+                            <Setter TargetName="HeaderText" Property="Foreground" Value="{StaticResource AccentBrush}"/>
                             <Setter TargetName="Indicator" Property="Background"
                                     Value="{StaticResource AccentBrush}"/>
                         </Trigger>
@@ -249,7 +246,7 @@
                                 <Condition Property="IsMouseOver" Value="True"/>
                                 <Condition Property="IsSelected" Value="False"/>
                             </MultiTrigger.Conditions>
-                            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                            <Setter TargetName="HeaderText" Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
                         </MultiTrigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
