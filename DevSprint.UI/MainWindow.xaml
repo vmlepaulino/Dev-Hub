@@ -176,6 +176,17 @@ Title="Team Hub" Height="700" Width="1200">
                     </EventTrigger>
                 </TextBlock.Triggers>
             </TextBlock>
+
+            <!-- Search box -->
+            <Grid Margin="40,0,0,0" VerticalAlignment="Center">
+                <TextBox x:Name="SearchBox" Width="250" Padding="10,8,32,8"
+                         Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                         FontFamily="{StaticResource ContentFont}" FontSize="13"/>
+                <TextBlock Text="🔍" FontSize="14" IsHitTestVisible="False"
+                           HorizontalAlignment="Right" VerticalAlignment="Center"
+                           Margin="0,0,10,0"
+                           Foreground="{StaticResource TextSecondaryBrush}"/>
+            </Grid>
         </StackPanel>
 
         <TextBlock Grid.Row="1" Text="{Binding ErrorMessage}"

@@ -81,6 +81,23 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private bool _isSidebarLoading;
 
+    [ObservableProperty]
+    private string _searchText = string.Empty;
+
+    partial void OnSearchTextChanged(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return;
+
+        var key = value.Trim().ToUpperInvariant();
+        var match = BacklogIssues.FirstOrDefault(i => i.Key.Equals(key, StringComparison.OrdinalIgnoreCase))
+                 ?? SprintIssues.FirstOrDefault(i => i.Key.Equals(key, StringComparison.OrdinalIgnoreCase))
+                 ?? AssignedIssues.FirstOrDefault(i => i.Key.Equals(key, StringComparison.OrdinalIgnoreCase))
+                 ?? ContributingIssues.FirstOrDefault(i => i.Key.Equals(key, StringComparison.OrdinalIgnoreCase));
+
+        if (match is not null)
+            SelectIssueCommand.Execute(match);
+    }
+
     public ObservableCollection<TeamMember> SidebarTeamMembers { get; } = [];
     public ObservableCollection<BranchInfo> SidebarBranches { get; } = [];
 
