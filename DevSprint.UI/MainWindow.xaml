@@ -181,7 +181,11 @@ Title="Team Hub" Height="700" Width="1200">
             <Grid Margin="24,0,0,0" VerticalAlignment="Center">
                 <TextBox x:Name="SearchBox" Width="220" Padding="8,5,28,5"
                          Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                         FontFamily="{StaticResource ContentFont}" FontSize="12"/>
+                         FontFamily="{StaticResource ContentFont}" FontSize="12">
+                    <TextBox.InputBindings>
+                        <KeyBinding Key="Return" Command="{Binding SearchCommand}"/>
+                    </TextBox.InputBindings>
+                </TextBox>
                 <TextBlock Text="🔍" FontSize="12" IsHitTestVisible="False"
                            HorizontalAlignment="Right" VerticalAlignment="Center"
                            Margin="0,0,8,0"
