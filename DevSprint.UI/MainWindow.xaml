@@ -166,14 +166,10 @@ Title="DevSprint" Height="700" Width="1200">
                    Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}"
                    Panel.ZIndex="1"/>
 
-        <TabControl x:Name="MainTabControl" Grid.Row="3" FontFamily="{StaticResource ContentFont}" FontSize="13"
-                    Background="Transparent" BorderThickness="0">
+        <TabControl x:Name="MainTabControl" Grid.Row="3" Style="{StaticResource OutlookTabControl}">
 
             <!-- Product Backlog -->
-            <TabItem>
-                <TabItem.Header>
-                    <TextBlock Text="Product Backlog" FontSize="14" FontWeight="SemiBold"/>
-                </TabItem.Header>
+            <TabItem Style="{StaticResource OutlookTabItem}" Header="Product Backlog">
                 <DockPanel Margin="0,12,0,0">
                     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,12">
                         <Border Background="{StaticResource AccentBrush}" CornerRadius="4" Padding="12,6" Margin="0,0,8,0">
@@ -212,10 +208,7 @@ Title="DevSprint" Height="700" Width="1200">
             </TabItem>
 
             <!-- Current Sprint -->
-            <TabItem>
-                <TabItem.Header>
-                    <TextBlock Text="Current Sprint" FontSize="14" FontWeight="SemiBold"/>
-                </TabItem.Header>
+            <TabItem Style="{StaticResource OutlookTabItem}" Header="Current Sprint">
                 <DockPanel Margin="0,12,0,0">
                     <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
@@ -258,10 +251,7 @@ Title="DevSprint" Height="700" Width="1200">
             </TabItem>
 
             <!-- Assigned To Me -->
-            <TabItem>
-                <TabItem.Header>
-                    <TextBlock Text="Assigned To Me" FontSize="14" FontWeight="SemiBold"/>
-                </TabItem.Header>
+            <TabItem Style="{StaticResource OutlookTabItem}" Header="Assigned To Me">
                 <DockPanel Margin="0,12,0,0">
                     <ScrollViewer x:Name="AssignedScrollViewer" VerticalScrollBarVisibility="Auto" Padding="0,0,4,0">
                         <StackPanel>
@@ -283,10 +273,7 @@ Title="DevSprint" Height="700" Width="1200">
             </TabItem>
 
             <!-- Contributing To -->
-            <TabItem>
-                <TabItem.Header>
-                    <TextBlock Text="Contributing To" FontSize="14" FontWeight="SemiBold"/>
-                </TabItem.Header>
+            <TabItem Style="{StaticResource OutlookTabItem}" Header="Contributing To">
                 <DockPanel Margin="0,12,0,0">
                     <ScrollViewer x:Name="ContributingScrollViewer" VerticalScrollBarVisibility="Auto" Padding="0,0,4,0">
                         <StackPanel>
