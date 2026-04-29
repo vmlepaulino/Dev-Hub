@@ -39,32 +39,31 @@ public sealed class JiraService : IJiraService
 
 
 
-    public async Task<PagedResult<JiraIssue>> GetBacklogAsync(DateTime from, DateTime to, int startAt = 0, int maxResults = 100, CancellationToken cancellationToken = default)
-    {
-        var fromStr = from.ToString("yyyy-MM-dd");
-        var toStr = to.ToString("yyyy-MM-dd");
-        var jql = $"project = {_projectKey} AND updated >= \"{fromStr}\" AND updated <= \"{toStr}\" ORDER BY updated DESC";
 
+    public async Task<PagedResult<JiraIssue>> GetProductBacklogAsync(int startAt = 0, int maxResults = 100, CancellationToken cancellationToken = default)
+    {
+        var jql = $"project = {_projectKey} AND sprint not in openSprints() AND statusCategory != Done ORDER BY updated DESC";
         return await SearchIssuesAsync(jql, startAt, maxResults, cancellationToken);
     }
 
-    public async Task<PagedResult<JiraIssue>> GetMyIssuesAsync(DateTime from, DateTime to, int startAt = 0, int maxResults = 100, CancellationToken cancellationToken = default)
+    public async Task<PagedResult<JiraIssue>> GetCurrentSprintIssuesAsync(int startAt = 0, int maxResults = 100, CancellationToken cancellationToken = default)
     {
-        var fromStr = from.ToString("yyyy-MM-dd");
-        var toStr = to.ToString("yyyy-MM-dd");
-        var jql = $"assignee = currentUser() AND updated >= \"{fromStr}\" AND updated <= \"{toStr}\" ORDER BY created DESC";
-
+        var jql = $"project = {_projectKey} AND sprint in openSprints() ORDER BY status ASC, updated DESC";
         return await SearchIssuesAsync(jql, startAt, maxResults, cancellationToken);
     }
 
-    public async Task<PagedResult<JiraIssue>> GetMyCommentedIssuesAsync(DateTime from, DateTime to, int startAt = 0, int maxResults = 100, CancellationToken cancellationToken = default)
+    public async Task<PagedResult<JiraIssue>> GetMyIssuesAsync(int startAt = 0, int maxResults = 100, CancellationToken cancellationToken = default)
     {
-        var fromStr = from.ToString("yyyy-MM-dd");
-        var toStr = to.ToString("yyyy-MM-dd");
-        var jql = $"comment ~ currentUser() AND updated >= \"{fromStr}\" AND updated <= \"{toStr}\" ORDER BY created DESC";
-
+        var jql = $"project = {_projectKey} AND assignee = currentUser() AND statusCategory != Done ORDER BY sprint DESC, updated DESC";
         return await SearchIssuesAsync(jql, startAt, maxResults, cancellationToken);
     }
+
+    public async Task<PagedResult<JiraIssue>> GetMyCommentedIssuesAsync(int startAt = 0, int maxResults = 100, CancellationToken cancellationToken = default)
+    {
+        var jql = $"project = {_projectKey} AND assignee != currentUser() AND statusCategory != Done ORDER BY updated DESC";
+        return await SearchIssuesAsync(jql, startAt, maxResults, cancellationToken);
+    }
+
 
 
     public async Task<HashSet<string>> GetCurrentSprintKeysAsync(CancellationToken cancellationToken = default)
@@ -102,7 +101,7 @@ public sealed class JiraService : IJiraService
 
     private async Task<PagedResult<JiraIssue>> SearchIssuesAsync(string jql, int startAt, int maxResults, CancellationToken cancellationToken)
     {
-        var fields = "summary,status,assignee,priority,issuetype,created,updated,timespent,statuscategorychangedate,description,comment,customfield_10037";
+        var fields = "summary,status,assignee,priority,issuetype,created,updated,timespent,statuscategorychangedate,description,comment,customfield_10037,story_points";
         var url = $"rest/api/3/search/jql?jql={Uri.EscapeDataString(jql)}&fields={fields}&expand=changelog&startAt={startAt}&maxResults={maxResults}";
 
         using var response = await _httpClient.GetAsync(url, cancellationToken);
@@ -169,7 +168,8 @@ public sealed class JiraService : IJiraService
             HasDescription = HasContent(fields, "description"),
             HasAcceptanceCriteria = HasContent(fields, "customfield_10037"),
             HasComments = GetCommentCount(fields) > 0,
-            CommentCount = GetCommentCount(fields)
+            CommentCount = GetCommentCount(fields),
+            StoryPoints = GetDoubleOrDefault(fields, "story_points")
         };
     }
 
@@ -194,6 +194,44 @@ public sealed class JiraService : IJiraService
             && DateTime.TryParse(prop.GetString(), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var date)
             ? date
             : DateTime.MinValue;
+    }
+
+    private static double GetDoubleOrDefault(JsonElement element, string propertyName)
+    {
+        if (!element.TryGetProperty(propertyName, out var prop)) return 0;
+        return prop.ValueKind == JsonValueKind.Number ? prop.GetDouble() : 0;
+    }
+
+    public async Task<SprintInfo?> GetActiveSprintInfoAsync(CancellationToken cancellationToken = default)
+    {
+        var url = $"rest/agile/1.0/board/{_boardId}/sprint?state=active";
+        using var response = await _httpClient.GetAsync(url, cancellationToken);
+        if (!response.IsSuccessStatusCode) return null;
+
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        using var doc = JsonDocument.Parse(json);
+
+        if (!doc.RootElement.TryGetProperty("values", out var values)) return null;
+
+        foreach (var sprint in values.EnumerateArray())
+        {
+            return new SprintInfo
+            {
+                Id = sprint.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.Number ? id.GetInt32() : 0,
+                Name = GetStringOrDefault(sprint, "name"),
+                State = GetStringOrDefault(sprint, "state"),
+                StartDate = GetNullableDateOrDefault(sprint, "startDate"),
+                EndDate = GetNullableDateOrDefault(sprint, "endDate")
+            };
+        }
+
+        return null;
+    }
+
+    private static DateTime? GetNullableDateOrDefault(JsonElement element, string propertyName)
+    {
+        var date = GetDateOrDefault(element, propertyName);
+        return date > DateTime.MinValue ? date : null;
     }
 
     private static bool HasContent(JsonElement fields, string propertyName)

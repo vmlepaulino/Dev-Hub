@@ -14,21 +14,23 @@ public partial class MainViewModel : ObservableObject
     private const int ScrollPageSize = 10;
 
     private int _backlogNextStartAt;
-    private int _myIssuesNextStartAt;
-    private int _commentedNextStartAt;
     private bool _backlogHasMore;
-    private bool _myIssuesHasMore;
-    private bool _commentedHasMore;
     private bool _isLoadingMoreBacklog;
-    private bool _isLoadingMoreMyIssues;
+
+    private int _sprintNextStartAt;
+    private bool _sprintHasMore;
+    private bool _isLoadingMoreSprint;
+
+    private int _assignedNextStartAt;
+    private bool _assignedHasMore;
+    private bool _isLoadingMoreAssigned;
+
+    private int _contributingNextStartAt;
+    private bool _contributingHasMore;
+    private bool _isLoadingMoreContributing;
+    private HashSet<string> _contributingKeys = [];
+
     private HashSet<string> _sprintKeys = [];
-    private HashSet<string> _myIssueKeys = [];
-
-    [ObservableProperty]
-    private DateTime _fromDate = DateTime.Today.AddDays(-14);
-
-    [ObservableProperty]
-    private DateTime _toDate = DateTime.Today;
 
     [ObservableProperty]
     private bool _isLoading;
@@ -40,10 +42,39 @@ public partial class MainViewModel : ObservableObject
     private string _backlogStatus = string.Empty;
 
     [ObservableProperty]
-    private string _myIssuesStatus = string.Empty;
+    private int _backlogTotalCount;
+
+    [ObservableProperty]
+    private int _backlogRefinedCount;
+
+    [ObservableProperty]
+    private int _backlogInAnalysisCount;
+
+    [ObservableProperty]
+    private string _sprintStatus = string.Empty;
+
+    [ObservableProperty]
+    private string _sprintName = string.Empty;
+
+    [ObservableProperty]
+    private string _sprintDateRange = string.Empty;
+
+    [ObservableProperty]
+    private double _sprintTotalStoryPoints;
+
+    [ObservableProperty]
+    private string _sprintStateSummary = string.Empty;
+
+    [ObservableProperty]
+    private string _assignedStatus = string.Empty;
+
+    [ObservableProperty]
+    private string _contributingStatus = string.Empty;
 
     public ObservableCollection<JiraIssue> BacklogIssues { get; } = [];
-    public ObservableCollection<JiraIssue> MyIssues { get; } = [];
+    public ObservableCollection<JiraIssue> SprintIssues { get; } = [];
+    public ObservableCollection<JiraIssue> AssignedIssues { get; } = [];
+    public ObservableCollection<JiraIssue> ContributingIssues { get; } = [];
 
     public MainViewModel(IJiraService jiraService)
     {
@@ -56,43 +87,75 @@ public partial class MainViewModel : ObservableObject
         IsLoading = true;
         ErrorMessage = string.Empty;
         BacklogIssues.Clear();
-        MyIssues.Clear();
+        SprintIssues.Clear();
+        AssignedIssues.Clear();
+        ContributingIssues.Clear();
         _sprintKeys = [];
-        _myIssueKeys = [];
+        _contributingKeys = [];
 
         try
         {
-            // Fetch sprint keys (lightweight) in parallel with data
+            var sprintInfoTask = _jiraService.GetActiveSprintInfoAsync();
             var sprintKeysTask = _jiraService.GetCurrentSprintKeysAsync();
-            var backlogTask = _jiraService.GetBacklogAsync(FromDate, ToDate, 0, InitialPageSize);
-            var assignedTask = _jiraService.GetMyIssuesAsync(FromDate, ToDate, 0, InitialPageSize);
-            var commentedTask = _jiraService.GetMyCommentedIssuesAsync(FromDate, ToDate, 0, InitialPageSize);
+            var backlogTask = _jiraService.GetProductBacklogAsync(0, InitialPageSize);
+            var sprintTask = _jiraService.GetCurrentSprintIssuesAsync(0, InitialPageSize);
+            var assignedTask = _jiraService.GetMyIssuesAsync(0, InitialPageSize);
+            var contributingTask = _jiraService.GetMyCommentedIssuesAsync(0, InitialPageSize);
 
-            await Task.WhenAll(sprintKeysTask, backlogTask, assignedTask, commentedTask);
+            await Task.WhenAll(sprintInfoTask, sprintKeysTask, backlogTask, sprintTask, assignedTask, contributingTask);
 
             _sprintKeys = sprintKeysTask.Result;
-            var backlogResult = backlogTask.Result;
-            var assignedResult = assignedTask.Result;
-            var commentedResult = commentedTask.Result;
 
-            foreach (var issue in backlogResult.Items)
+            var sprintInfo = sprintInfoTask.Result;
+            if (sprintInfo is not null)
             {
-                issue.IsCurrentSprint = _sprintKeys.Contains(issue.Key);
-                BacklogIssues.Add(issue);
+                SprintName = sprintInfo.Name;
+                SprintDateRange = $"{sprintInfo.StartDate:dd/MM/yyyy} — {sprintInfo.EndDate:dd/MM/yyyy}";
             }
 
+            var backlogResult = backlogTask.Result;
+            foreach (var issue in backlogResult.Items)
+            {
+                issue.IsCurrentSprint = false;
+                BacklogIssues.Add(issue);
+            }
             _backlogNextStartAt = backlogResult.NextStartAt;
             _backlogHasMore = backlogResult.HasMore;
-            BacklogStatus = $"Showing {BacklogIssues.Count} of {backlogResult.Total}";
+            BacklogTotalCount = backlogResult.Total;
+            UpdateBacklogStats();
 
-            AddMyIssues(assignedResult.Items);
-            AddMyIssues(commentedResult.Items);
+            var sprintResult = sprintTask.Result;
+            foreach (var issue in sprintResult.Items)
+            {
+                issue.IsCurrentSprint = true;
+                SprintIssues.Add(issue);
+            }
+            _sprintNextStartAt = sprintResult.NextStartAt;
+            _sprintHasMore = sprintResult.HasMore;
+            UpdateSprintStats();
 
-            _myIssuesNextStartAt = assignedResult.NextStartAt;
-            _commentedNextStartAt = commentedResult.NextStartAt;
-            _myIssuesHasMore = assignedResult.HasMore;
-            _commentedHasMore = commentedResult.HasMore;
-            UpdateMyIssuesStatus(assignedResult.Total, commentedResult.Total);
+            var assignedResult = assignedTask.Result;
+            foreach (var issue in assignedResult.Items)
+            {
+                issue.IsCurrentSprint = _sprintKeys.Contains(issue.Key);
+                AssignedIssues.Add(issue);
+            }
+            _assignedNextStartAt = assignedResult.NextStartAt;
+            _assignedHasMore = assignedResult.HasMore;
+            AssignedStatus = $"Showing {AssignedIssues.Count} of {assignedResult.Total}";
+
+            var contributingResult = contributingTask.Result;
+            foreach (var issue in contributingResult.Items)
+            {
+                if (_contributingKeys.Add(issue.Key))
+                {
+                    issue.IsCurrentSprint = _sprintKeys.Contains(issue.Key);
+                    ContributingIssues.Add(issue);
+                }
+            }
+            _contributingNextStartAt = contributingResult.NextStartAt;
+            _contributingHasMore = contributingResult.HasMore;
+            ContributingStatus = $"Showing {ContributingIssues.Count} of {contributingResult.Total}";
         }
         catch (Exception ex)
         {
@@ -109,79 +172,88 @@ public partial class MainViewModel : ObservableObject
     {
         if (!_backlogHasMore || _isLoadingMoreBacklog) return;
         _isLoadingMoreBacklog = true;
-
         try
         {
-            var result = await _jiraService.GetBacklogAsync(FromDate, ToDate, _backlogNextStartAt, ScrollPageSize);
-
-            foreach (var issue in result.Items)
-            {
-                issue.IsCurrentSprint = _sprintKeys.Contains(issue.Key);
-                BacklogIssues.Add(issue);
-            }
-
+            var result = await _jiraService.GetProductBacklogAsync(_backlogNextStartAt, ScrollPageSize);
+            foreach (var issue in result.Items) { issue.IsCurrentSprint = false; BacklogIssues.Add(issue); }
             _backlogNextStartAt = result.NextStartAt;
             _backlogHasMore = result.HasMore;
-            BacklogStatus = $"Showing {BacklogIssues.Count} of {result.Total}";
+            UpdateBacklogStats();
         }
-        catch (Exception ex)
-        {
-            ErrorMessage = ex.Message;
-        }
-        finally
-        {
-            _isLoadingMoreBacklog = false;
-        }
+        catch (Exception ex) { ErrorMessage = ex.Message; }
+        finally { _isLoadingMoreBacklog = false; }
     }
 
     [RelayCommand]
-    private async Task ScrollMyIssuesAsync()
+    private async Task ScrollSprintAsync()
     {
-        if ((!_myIssuesHasMore && !_commentedHasMore) || _isLoadingMoreMyIssues) return;
-        _isLoadingMoreMyIssues = true;
-
+        if (!_sprintHasMore || _isLoadingMoreSprint) return;
+        _isLoadingMoreSprint = true;
         try
         {
-            if (_myIssuesHasMore)
-            {
-                var result = await _jiraService.GetMyIssuesAsync(FromDate, ToDate, _myIssuesNextStartAt, ScrollPageSize);
-                AddMyIssues(result.Items);
-                _myIssuesNextStartAt = result.NextStartAt;
-                _myIssuesHasMore = result.HasMore;
-            }
-
-            if (_commentedHasMore)
-            {
-                var result = await _jiraService.GetMyCommentedIssuesAsync(FromDate, ToDate, _commentedNextStartAt, ScrollPageSize);
-                AddMyIssues(result.Items);
-                _commentedNextStartAt = result.NextStartAt;
-                _commentedHasMore = result.HasMore;
-            }
-
-            MyIssuesStatus = $"Showing {MyIssues.Count}";
+            var result = await _jiraService.GetCurrentSprintIssuesAsync(_sprintNextStartAt, ScrollPageSize);
+            foreach (var issue in result.Items) { issue.IsCurrentSprint = true; SprintIssues.Add(issue); }
+            _sprintNextStartAt = result.NextStartAt;
+            _sprintHasMore = result.HasMore;
+            UpdateSprintStats();
         }
-        catch (Exception ex)
-        {
-            ErrorMessage = ex.Message;
-        }
-        finally
-        {
-            _isLoadingMoreMyIssues = false;
-        }
+        catch (Exception ex) { ErrorMessage = ex.Message; }
+        finally { _isLoadingMoreSprint = false; }
     }
 
-    private void AddMyIssues(IReadOnlyList<JiraIssue> issues)
+    [RelayCommand]
+    private async Task ScrollAssignedAsync()
     {
-        foreach (var issue in issues)
+        if (!_assignedHasMore || _isLoadingMoreAssigned) return;
+        _isLoadingMoreAssigned = true;
+        try
         {
-            if (!_myIssueKeys.Add(issue.Key)) continue;
-            issue.IsCurrentSprint = _sprintKeys.Contains(issue.Key);
-            MyIssues.Add(issue);
+            var result = await _jiraService.GetMyIssuesAsync(_assignedNextStartAt, ScrollPageSize);
+            foreach (var issue in result.Items) { issue.IsCurrentSprint = _sprintKeys.Contains(issue.Key); AssignedIssues.Add(issue); }
+            _assignedNextStartAt = result.NextStartAt;
+            _assignedHasMore = result.HasMore;
+            AssignedStatus = $"Showing {AssignedIssues.Count} of {result.Total}";
         }
+        catch (Exception ex) { ErrorMessage = ex.Message; }
+        finally { _isLoadingMoreAssigned = false; }
     }
 
-    private void UpdateMyIssuesStatus(int assignedTotal, int commentedTotal)
+    [RelayCommand]
+    private async Task ScrollContributingAsync()
     {
-        MyIssuesStatus = $"Showing {MyIssues.Count} of ~{assignedTotal + commentedTotal}";
+        if (!_contributingHasMore || _isLoadingMoreContributing) return;
+        _isLoadingMoreContributing = true;
+        try
+        {
+            var result = await _jiraService.GetMyCommentedIssuesAsync(_contributingNextStartAt, ScrollPageSize);
+            foreach (var issue in result.Items)
+            {
+                if (_contributingKeys.Add(issue.Key)) { issue.IsCurrentSprint = _sprintKeys.Contains(issue.Key); ContributingIssues.Add(issue); }
+            }
+            _contributingNextStartAt = result.NextStartAt;
+            _contributingHasMore = result.HasMore;
+            ContributingStatus = $"Showing {ContributingIssues.Count} of {result.Total}";
+        }
+        catch (Exception ex) { ErrorMessage = ex.Message; }
+        finally { _isLoadingMoreContributing = false; }
+    }
+
+    private void UpdateBacklogStats()
+    {
+        BacklogRefinedCount = BacklogIssues.Count(i =>
+            i.Status.Contains("refin", StringComparison.OrdinalIgnoreCase) ||
+            i.Status.Contains("ready", StringComparison.OrdinalIgnoreCase));
+        BacklogInAnalysisCount = BacklogIssues.Count(i =>
+            i.Status.Contains("analy", StringComparison.OrdinalIgnoreCase) ||
+            i.Status.Contains("review", StringComparison.OrdinalIgnoreCase));
+        BacklogStatus = $"Showing {BacklogIssues.Count} of {BacklogTotalCount}";
+    }
+
+    private void UpdateSprintStats()
+    {
+        SprintTotalStoryPoints = SprintIssues.Sum(i => i.StoryPoints);
+        var groups = SprintIssues.GroupBy(i => i.Status).OrderBy(g => g.Key).Select(g => $"{g.Key}: {g.Count()}");
+        SprintStateSummary = string.Join("  ·  ", groups);
+        SprintStatus = $"Showing {SprintIssues.Count}  ·  {SprintTotalStoryPoints} SP";
     }
 }

@@ -19,4 +19,5 @@ public sealed class JiraIssue
     public bool HasComments { get; set; }
     public int CommentCount { get; set; }
     public bool IsCurrentSprint { get; set; }
+    public double StoryPoints { get; set; }
 }

@@ -2,6 +2,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Navigation;
+using CommunityToolkit.Mvvm.Input;
 using DevSprint.UI.ViewModels;
 
 namespace DevSprint.UI
@@ -9,6 +10,8 @@ namespace DevSprint.UI
     public partial class MainWindow : Window
     {
         private readonly MainViewModel _viewModel;
+        private readonly List<(string Name, IAsyncRelayCommand Command)> _scrollBindings = [];
+        private readonly HashSet<ScrollViewer> _wiredScrollViewers = [];
 
         public MainWindow(MainViewModel viewModel)
         {
@@ -21,26 +24,34 @@ namespace DevSprint.UI
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
-            BacklogScrollViewer.ScrollChanged += OnBacklogScrollChanged;
-            MyIssuesScrollViewer.ScrollChanged += OnMyIssuesScrollChanged;
+            _scrollBindings.Add(("BacklogScrollViewer", _viewModel.ScrollBacklogCommand));
+            _scrollBindings.Add(("SprintScrollViewer", _viewModel.ScrollSprintCommand));
+            _scrollBindings.Add(("AssignedScrollViewer", _viewModel.ScrollAssignedCommand));
+            _scrollBindings.Add(("ContributingScrollViewer", _viewModel.ScrollContributingCommand));
+
+            WireVisibleScrollViewers();
+            MainTabControl.SelectionChanged += (_, _) => WireVisibleScrollViewers();
         }
 
-        private async void OnBacklogScrollChanged(object sender, ScrollChangedEventArgs e)
+        private void WireVisibleScrollViewers()
+        {
+            foreach (var (name, command) in _scrollBindings)
+            {
+                if (FindName(name) is ScrollViewer sv && _wiredScrollViewers.Add(sv))
+                {
+                    sv.ScrollChanged += (s, _) => OnScrollNearEnd(s, command);
+                }
+            }
+        }
+
+        private static async void OnScrollNearEnd(object sender, IAsyncRelayCommand command)
         {
             if (sender is not ScrollViewer sv) return;
             if (sv.ScrollableHeight <= 0) return;
             if (sv.VerticalOffset < sv.ScrollableHeight - 100) return;
 
-            await _viewModel.ScrollBacklogCommand.ExecuteAsync(null);
-        }
-
-        private async void OnMyIssuesScrollChanged(object sender, ScrollChangedEventArgs e)
-        {
-            if (sender is not ScrollViewer sv) return;
-            if (sv.ScrollableHeight <= 0) return;
-            if (sv.VerticalOffset < sv.ScrollableHeight - 100) return;
-
-            await _viewModel.ScrollMyIssuesCommand.ExecuteAsync(null);
+            if (command.CanExecute(null))
+                await command.ExecuteAsync(null);
         }
 
         private void Hyperlink_RequestNavigate(object sender, RequestNavigateEventArgs e)

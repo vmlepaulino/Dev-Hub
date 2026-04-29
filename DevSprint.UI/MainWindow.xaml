@@ -15,7 +15,6 @@ Title="DevSprint" Height="700" Width="1200">
             <Border Style="{StaticResource CardBorder}" Margin="0,0,0,6"
                     Padding="0" ClipToBounds="True">
                 <DockPanel>
-                    <!-- Left accent strip: blue = current sprint, grey = other -->
                     <Border DockPanel.Dock="Left" Width="5"
                             CornerRadius="4,0,0,4"
                             Background="{Binding IsCurrentSprint, Converter={StaticResource SprintBorderBrushConverter}}"/>
@@ -80,7 +79,6 @@ Title="DevSprint" Height="700" Width="1200">
                                    FontFamily="{StaticResource ContentFont}"/>
                     </StackPanel>
 
-                    <!-- Quality signals -->
                     <StackPanel Grid.Column="1" Grid.Row="2" Orientation="Horizontal"
                                 Margin="0,6,0,0">
                         <Border CornerRadius="4" Padding="8,3" Margin="0,0,8,0"
@@ -97,7 +95,7 @@ Title="DevSprint" Height="700" Width="1200">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="{Binding HasAcceptanceCriteria, Converter={StaticResource BoolToSignalIconConverter}}"
                                            FontSize="11" FontWeight="Bold" Foreground="White" Margin="0,0,4,0"/>
-                                <TextBlock Text="Acceptance Criteria" FontSize="11" Foreground="White"
+                                <TextBlock Text="AC" FontSize="11" Foreground="White"
                                            FontFamily="{StaticResource ContentFont}"/>
                             </StackPanel>
                         </Border>
@@ -106,8 +104,7 @@ Title="DevSprint" Height="700" Width="1200">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="{Binding HasComments, Converter={StaticResource BoolToSignalIconConverter}}"
                                            FontSize="11" FontWeight="Bold" Foreground="White" Margin="0,0,4,0"/>
-                                <TextBlock FontSize="11" Foreground="White"
-                                           FontFamily="{StaticResource ContentFont}">
+                                <TextBlock FontSize="11" Foreground="White" FontFamily="{StaticResource ContentFont}">
                                     <Run Text="Comments"/>
                                     <Run Text="{Binding CommentCount, StringFormat='({0})', Mode=OneWay}"/>
                                 </TextBlock>
@@ -115,7 +112,6 @@ Title="DevSprint" Height="700" Width="1200">
                         </Border>
                     </StackPanel>
 
-                    <!-- State history -->
                     <TextBlock Grid.Column="1" Grid.Row="3"
                                Text="{Binding StateHistory, Converter={StaticResource StateHistoryConverter}}"
                                FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
@@ -125,13 +121,13 @@ Title="DevSprint" Height="700" Width="1200">
                     <StackPanel Grid.Column="2" Grid.RowSpan="4"
                                 VerticalAlignment="Center" HorizontalAlignment="Right"
                                 Margin="14,0,0,0">
-                        <TextBlock Text="{Binding TimeSpent, TargetNullValue='-', FallbackValue='-'}"
-                                   FontSize="16" FontWeight="SemiBold"
+                        <TextBlock Text="{Binding StoryPoints, StringFormat='{}{0} SP'}"
+                                   FontSize="14" FontWeight="SemiBold"
                                    Foreground="{StaticResource AccentBrush}"
                                    HorizontalAlignment="Center"
                                    FontFamily="{StaticResource ContentFont}"/>
-                        <TextBlock Text="time spent" FontSize="11"
-                                   Foreground="{StaticResource TextSecondaryBrush}"
+                        <TextBlock Text="{Binding TimeSpent, TargetNullValue='-', FallbackValue='-'}"
+                                   FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
                                    HorizontalAlignment="Center"
                                    FontFamily="{StaticResource ContentFont}"/>
                     </StackPanel>
@@ -149,104 +145,167 @@ Title="DevSprint" Height="700" Width="1200">
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- Header -->
-        <TextBlock Grid.Row="0" Text="DevSprint"
-                   FontSize="32" FontWeight="SemiBold"
-                   Foreground="{StaticResource TextPrimaryBrush}"
-                   FontFamily="{StaticResource ContentFont}"
-                   Margin="0,0,0,20"/>
-
-        <!-- Date range + Load -->
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,20">
-            <TextBlock Text="From" VerticalAlignment="Center" Margin="0,0,10,0"
-                       Foreground="{StaticResource TextSecondaryBrush}"
-                       FontFamily="{StaticResource ContentFont}" FontSize="13"/>
-            <DatePicker SelectedDate="{Binding FromDate}" Width="150"/>
-            <TextBlock Text="To" VerticalAlignment="Center" Margin="16,0,10,0"
-                       Foreground="{StaticResource TextSecondaryBrush}"
-                       FontFamily="{StaticResource ContentFont}" FontSize="13"/>
-            <DatePicker SelectedDate="{Binding ToDate}" Width="150"/>
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,16">
+            <TextBlock Text="DevSprint" FontSize="32" FontWeight="SemiBold"
+                       Foreground="{StaticResource TextPrimaryBrush}"
+                       FontFamily="{StaticResource ContentFont}" VerticalAlignment="Center"/>
             <Button Content="Load" Command="{Binding LoadDataCommand}"
-                    Style="{StaticResource AccentButton}" Margin="16,0,0,0"/>
+                    Style="{StaticResource AccentButton}" Margin="24,0,0,0"
+                    VerticalAlignment="Center"/>
         </StackPanel>
 
-        <!-- Error message -->
-        <TextBlock Grid.Row="2" Text="{Binding ErrorMessage}"
+        <TextBlock Grid.Row="1" Text="{Binding ErrorMessage}"
                    Foreground="{StaticResource ErrorBrush}" Margin="0,0,0,8"
                    Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibilityConverter}}"
                    TextWrapping="Wrap" FontFamily="{StaticResource ContentFont}" FontSize="13"/>
 
-        <!-- Loading indicator -->
-        <TextBlock Grid.Row="3" Text="Loading…" FontSize="16"
+        <TextBlock Grid.Row="2" Text="Loading…" FontSize="16"
                    Foreground="{StaticResource TextSecondaryBrush}"
                    FontFamily="{StaticResource ContentFont}"
                    HorizontalAlignment="Center" VerticalAlignment="Center"
                    Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}"
                    Panel.ZIndex="1"/>
 
-        <!-- Two-column layout: Backlog | My Activity -->
-        <Grid Grid.Row="3">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="20"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
+        <TabControl x:Name="MainTabControl" Grid.Row="3" FontFamily="{StaticResource ContentFont}" FontSize="13"
+                    Background="Transparent" BorderThickness="0">
 
-            <!-- Backlog -->
-            <DockPanel Grid.Column="0">
-                <TextBlock DockPanel.Dock="Top" Text="Board Backlog"
-                           FontSize="20" FontWeight="SemiBold"
-                           Foreground="{StaticResource TextPrimaryBrush}"
-                           FontFamily="{StaticResource ContentFont}"
-                           Margin="0,0,0,12"/>
-                <ScrollViewer x:Name="BacklogScrollViewer" VerticalScrollBarVisibility="Auto" Padding="0,0,4,0">
-                    <StackPanel>
-                        <ItemsControl ItemsSource="{Binding BacklogIssues}"
-                                      VirtualizingStackPanel.IsVirtualizing="True">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <VirtualizingStackPanel/>
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                                <StaticResource ResourceKey="JiraIssueTemplate"/>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                        <TextBlock Text="{Binding BacklogStatus}"
-                                   FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
-                                   FontFamily="{StaticResource ContentFont}"
-                                   HorizontalAlignment="Center" Margin="0,8,0,12"/>
+            <!-- Product Backlog -->
+            <TabItem>
+                <TabItem.Header>
+                    <TextBlock Text="Product Backlog" FontSize="14" FontWeight="SemiBold"/>
+                </TabItem.Header>
+                <DockPanel Margin="0,12,0,0">
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,12">
+                        <Border Background="{StaticResource AccentBrush}" CornerRadius="4" Padding="12,6" Margin="0,0,8,0">
+                            <TextBlock FontSize="12" Foreground="White" FontFamily="{StaticResource ContentFont}">
+                                <Run Text="Total:"/> <Run Text="{Binding BacklogTotalCount, Mode=OneWay}"/>
+                            </TextBlock>
+                        </Border>
+                        <Border Background="#E8A317" CornerRadius="4" Padding="12,6" Margin="0,0,8,0">
+                            <TextBlock FontSize="12" Foreground="White" FontFamily="{StaticResource ContentFont}">
+                                <Run Text="Refined:"/> <Run Text="{Binding BacklogRefinedCount, Mode=OneWay}"/>
+                            </TextBlock>
+                        </Border>
+                        <Border Background="#6B5B95" CornerRadius="4" Padding="12,6">
+                            <TextBlock FontSize="12" Foreground="White" FontFamily="{StaticResource ContentFont}">
+                                <Run Text="In Analysis:"/> <Run Text="{Binding BacklogInAnalysisCount, Mode=OneWay}"/>
+                            </TextBlock>
+                        </Border>
                     </StackPanel>
-                </ScrollViewer>
-            </DockPanel>
+                    <ScrollViewer x:Name="BacklogScrollViewer" VerticalScrollBarVisibility="Auto" Padding="0,0,4,0">
+                        <StackPanel>
+                            <ItemsControl ItemsSource="{Binding BacklogIssues}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><VirtualizingStackPanel/></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <StaticResource ResourceKey="JiraIssueTemplate"/>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Text="{Binding BacklogStatus}" FontSize="12"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontFamily="{StaticResource ContentFont}"
+                                       HorizontalAlignment="Center" Margin="0,8,0,12"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </DockPanel>
+            </TabItem>
 
-            <!-- My Activity -->
-            <DockPanel Grid.Column="2">
-                <TextBlock DockPanel.Dock="Top" Text="My Activity"
-                           FontSize="20" FontWeight="SemiBold"
-                           Foreground="{StaticResource TextPrimaryBrush}"
-                           FontFamily="{StaticResource ContentFont}"
-                           Margin="0,0,0,12"/>
-                <ScrollViewer x:Name="MyIssuesScrollViewer" VerticalScrollBarVisibility="Auto" Padding="0,0,4,0">
-                    <StackPanel>
-                        <ItemsControl ItemsSource="{Binding MyIssues}"
-                                      VirtualizingStackPanel.IsVirtualizing="True">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <VirtualizingStackPanel/>
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                                <StaticResource ResourceKey="JiraIssueTemplate"/>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                        <TextBlock Text="{Binding MyIssuesStatus}"
-                                   FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
-                                   FontFamily="{StaticResource ContentFont}"
-                                   HorizontalAlignment="Center" Margin="0,8,0,12"/>
+            <!-- Current Sprint -->
+            <TabItem>
+                <TabItem.Header>
+                    <TextBlock Text="Current Sprint" FontSize="14" FontWeight="SemiBold"/>
+                </TabItem.Header>
+                <DockPanel Margin="0,12,0,0">
+                    <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBlock Text="{Binding SprintName}" FontSize="18" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       FontFamily="{StaticResource ContentFont}" Margin="0,0,16,0"/>
+                            <TextBlock Text="{Binding SprintDateRange}" FontSize="13"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontFamily="{StaticResource ContentFont}"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                            <Border Background="{StaticResource AccentBrush}" CornerRadius="4" Padding="12,6" Margin="0,0,8,0">
+                                <TextBlock FontSize="12" Foreground="White" FontFamily="{StaticResource ContentFont}">
+                                    <Run Text="Story Points:"/> <Run Text="{Binding SprintTotalStoryPoints, Mode=OneWay}"/>
+                                </TextBlock>
+                            </Border>
+                        </StackPanel>
+                        <TextBlock Text="{Binding SprintStateSummary}" FontSize="12"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   FontFamily="{StaticResource ContentFont}" Margin="0,4,0,0"/>
                     </StackPanel>
-                </ScrollViewer>
-            </DockPanel>
-        </Grid>
+                    <ScrollViewer x:Name="SprintScrollViewer" VerticalScrollBarVisibility="Auto" Padding="0,0,4,0">
+                        <StackPanel>
+                            <ItemsControl ItemsSource="{Binding SprintIssues}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><VirtualizingStackPanel/></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <StaticResource ResourceKey="JiraIssueTemplate"/>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Text="{Binding SprintStatus}" FontSize="12"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontFamily="{StaticResource ContentFont}"
+                                       HorizontalAlignment="Center" Margin="0,8,0,12"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </DockPanel>
+            </TabItem>
+
+            <!-- Assigned To Me -->
+            <TabItem>
+                <TabItem.Header>
+                    <TextBlock Text="Assigned To Me" FontSize="14" FontWeight="SemiBold"/>
+                </TabItem.Header>
+                <DockPanel Margin="0,12,0,0">
+                    <ScrollViewer x:Name="AssignedScrollViewer" VerticalScrollBarVisibility="Auto" Padding="0,0,4,0">
+                        <StackPanel>
+                            <ItemsControl ItemsSource="{Binding AssignedIssues}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><VirtualizingStackPanel/></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <StaticResource ResourceKey="JiraIssueTemplate"/>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Text="{Binding AssignedStatus}" FontSize="12"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontFamily="{StaticResource ContentFont}"
+                                       HorizontalAlignment="Center" Margin="0,8,0,12"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </DockPanel>
+            </TabItem>
+
+            <!-- Contributing To -->
+            <TabItem>
+                <TabItem.Header>
+                    <TextBlock Text="Contributing To" FontSize="14" FontWeight="SemiBold"/>
+                </TabItem.Header>
+                <DockPanel Margin="0,12,0,0">
+                    <ScrollViewer x:Name="ContributingScrollViewer" VerticalScrollBarVisibility="Auto" Padding="0,0,4,0">
+                        <StackPanel>
+                            <ItemsControl ItemsSource="{Binding ContributingIssues}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><VirtualizingStackPanel/></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <StaticResource ResourceKey="JiraIssueTemplate"/>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Text="{Binding ContributingStatus}" FontSize="12"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontFamily="{StaticResource ContentFont}"
+                                       HorizontalAlignment="Center" Margin="0,8,0,12"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </DockPanel>
+            </TabItem>
+        </TabControl>
     </Grid>
 </Window>
