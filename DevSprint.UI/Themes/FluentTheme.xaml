@@ -194,8 +194,8 @@
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
                         <Border Grid.Row="0" BorderBrush="{StaticResource CardBorderBrush}"
-                                BorderThickness="0,0,0,1" Padding="0,0,0,0">
-                            <TabPanel IsItemsHost="True" Margin="0,0,0,0"/>
+                                BorderThickness="0,0,0,1">
+                            <StackPanel IsItemsHost="True" Orientation="Horizontal"/>
                         </Border>
                         <ContentPresenter Grid.Row="1"
                                           ContentSource="SelectedContent"
@@ -218,7 +218,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="TabItem">
-                    <Grid Background="Transparent">
+                    <Grid Background="Transparent" MinWidth="160">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="3"/>
@@ -229,6 +229,8 @@
                                    FontSize="{TemplateBinding FontSize}"
                                    Foreground="{TemplateBinding Foreground}"
                                    FontWeight="SemiBold"
+                                   TextWrapping="NoWrap"
+                                   TextTrimming="None"
                                    Margin="{TemplateBinding Padding}"/>
                         <Border x:Name="Indicator" Grid.Row="1"
                                 Background="Transparent"
