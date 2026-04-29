@@ -142,7 +142,7 @@ Title="Team Hub" Height="700" Width="1200">
         </DataTemplate>
     </Window.Resources>
 
-    <Grid Margin="32,24">
+    <Grid Margin="32,16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -150,11 +150,11 @@ Title="Team Hub" Height="700" Width="1200">
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,16">
-            <TextBlock Text="Team Hub" FontSize="32" FontWeight="SemiBold"
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+            <TextBlock Text="Team Hub" FontSize="24" FontWeight="SemiBold"
                        Foreground="{StaticResource TextPrimaryBrush}"
                        FontFamily="{StaticResource ContentFont}" VerticalAlignment="Center"/>
-            <TextBlock Text="⟳" FontSize="20" Margin="20,0,0,0"
+            <TextBlock Text="⟳" FontSize="16" Margin="14,0,0,0"
                        Foreground="{StaticResource AccentBrush}"
                        VerticalAlignment="Center"
                        Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}"
@@ -178,26 +178,26 @@ Title="Team Hub" Height="700" Width="1200">
             </TextBlock>
 
             <!-- Search box -->
-            <Grid Margin="40,0,0,0" VerticalAlignment="Center">
-                <TextBox x:Name="SearchBox" Width="250" Padding="10,8,32,8"
+            <Grid Margin="24,0,0,0" VerticalAlignment="Center">
+                <TextBox x:Name="SearchBox" Width="220" Padding="8,5,28,5"
                          Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                         FontFamily="{StaticResource ContentFont}" FontSize="13"/>
-                <TextBlock Text="🔍" FontSize="14" IsHitTestVisible="False"
+                         FontFamily="{StaticResource ContentFont}" FontSize="12"/>
+                <TextBlock Text="🔍" FontSize="12" IsHitTestVisible="False"
                            HorizontalAlignment="Right" VerticalAlignment="Center"
-                           Margin="0,0,10,0"
+                           Margin="0,0,8,0"
                            Foreground="{StaticResource TextSecondaryBrush}"/>
             </Grid>
         </StackPanel>
 
         <TextBlock Grid.Row="1" Text="{Binding ErrorMessage}"
-                   Foreground="{StaticResource ErrorBrush}" Margin="0,0,0,8"
+                   Foreground="{StaticResource ErrorBrush}" Margin="0,0,0,4"
                    Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibilityConverter}}"
                    TextWrapping="Wrap" FontFamily="{StaticResource ContentFont}" FontSize="13"/>
 
-        <TextBlock Grid.Row="2" Text="Loading…" FontSize="14"
+        <TextBlock Grid.Row="2" Text="Loading…" FontSize="12"
                    Foreground="{StaticResource TextSecondaryBrush}"
                    FontFamily="{StaticResource ContentFont}"
-                   Margin="0,0,0,8"
+                   Margin="0,0,0,4"
                    Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
         <TabControl x:Name="MainTabControl" Grid.Row="3" Style="{StaticResource OutlookTabControl}">
