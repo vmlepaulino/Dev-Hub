@@ -22,7 +22,7 @@ namespace DevSprint.UI
             Loaded += OnLoaded;
         }
 
-        private void OnLoaded(object sender, RoutedEventArgs e)
+        private async void OnLoaded(object sender, RoutedEventArgs e)
         {
             _scrollBindings.Add(("BacklogScrollViewer", _viewModel.ScrollBacklogCommand));
             _scrollBindings.Add(("SprintScrollViewer", _viewModel.ScrollSprintCommand));
@@ -31,6 +31,8 @@ namespace DevSprint.UI
 
             WireVisibleScrollViewers();
             MainTabControl.SelectionChanged += (_, _) => WireVisibleScrollViewers();
+
+            await _viewModel.LoadDataCommand.ExecuteAsync(null);
         }
 
         private void WireVisibleScrollViewers()

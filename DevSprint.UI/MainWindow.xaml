@@ -149,9 +149,28 @@ Title="DevSprint" Height="700" Width="1200">
             <TextBlock Text="DevSprint" FontSize="32" FontWeight="SemiBold"
                        Foreground="{StaticResource TextPrimaryBrush}"
                        FontFamily="{StaticResource ContentFont}" VerticalAlignment="Center"/>
-            <Button Content="Load" Command="{Binding LoadDataCommand}"
-                    Style="{StaticResource AccentButton}" Margin="24,0,0,0"
-                    VerticalAlignment="Center"/>
+            <TextBlock Text="⟳" FontSize="20" Margin="20,0,0,0"
+                       Foreground="{StaticResource AccentBrush}"
+                       VerticalAlignment="Center"
+                       Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}"
+                       FontFamily="{StaticResource ContentFont}">
+                <TextBlock.RenderTransform>
+                    <RotateTransform x:Name="SpinnerRotate" CenterX="10" CenterY="10"/>
+                </TextBlock.RenderTransform>
+                <TextBlock.Triggers>
+                    <EventTrigger RoutedEvent="Loaded">
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetName="SpinnerRotate"
+                                                 Storyboard.TargetProperty="Angle"
+                                                 From="0" To="360"
+                                                 Duration="0:0:1"
+                                                 RepeatBehavior="Forever"/>
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </EventTrigger>
+                </TextBlock.Triggers>
+            </TextBlock>
         </StackPanel>
 
         <TextBlock Grid.Row="1" Text="{Binding ErrorMessage}"
@@ -159,12 +178,11 @@ Title="DevSprint" Height="700" Width="1200">
                    Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibilityConverter}}"
                    TextWrapping="Wrap" FontFamily="{StaticResource ContentFont}" FontSize="13"/>
 
-        <TextBlock Grid.Row="2" Text="Loading…" FontSize="16"
+        <TextBlock Grid.Row="2" Text="Loading…" FontSize="14"
                    Foreground="{StaticResource TextSecondaryBrush}"
                    FontFamily="{StaticResource ContentFont}"
-                   HorizontalAlignment="Center" VerticalAlignment="Center"
-                   Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}"
-                   Panel.ZIndex="1"/>
+                   Margin="0,0,0,8"
+                   Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
         <TabControl x:Name="MainTabControl" Grid.Row="3" Style="{StaticResource OutlookTabControl}">
 
