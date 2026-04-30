@@ -254,12 +254,14 @@ public sealed class GitHubService : IGitHubService
                         var commitSha = pr.TryGetProperty("head", out var h) ? GetString(h, "sha") : string.Empty;
                         if (commitSha.Length > 7) commitSha = commitSha[..7];
 
+                        var prAuthor = pr.TryGetProperty("user", out var prUser) ? GetString(prUser, "login") : string.Empty;
+
                         branches[branchName] = new BranchInfo
                         {
                             Name = branchName,
                             Repository = repo,
                             LastCommitSha = commitSha,
-                            LastCommitAuthor = string.Empty,
+                            LastCommitAuthor = prAuthor,
                             LastCommitDate = updatedAt
                         };
                     }
