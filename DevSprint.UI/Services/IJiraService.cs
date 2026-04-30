@@ -13,4 +13,6 @@ public interface IJiraService
     Task<IReadOnlyList<SprintInfo>> GetSprintsForQuarterAsync(CancellationToken cancellationToken = default);
     Task<PagedResult<JiraIssue>> GetSprintIssuesAsync(int sprintId, int startAt = 0, int maxResults = 100, CancellationToken cancellationToken = default);
     Task<JiraIssue?> GetIssueByKeyAsync(string issueKey, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<TeamIdentity>> GetBoardMembersAsync(CancellationToken cancellationToken = default);
+    Task<TeamIdentity?> GetMyselfAsync(CancellationToken cancellationToken = default);
 }

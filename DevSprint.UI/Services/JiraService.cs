@@ -163,6 +163,8 @@ public sealed class JiraService : IJiraService
             Summary = GetStringOrDefault(fields, "summary"),
             Status = GetNestedStringOrDefault(fields, "status", "name"),
             Assignee = GetNestedStringOrDefault(fields, "assignee", "displayName"),
+            AssigneeAccountId = GetNestedStringOrDefault(fields, "assignee", "accountId"),
+            AssigneeAvatarUrl = GetAvatarUrl(fields),
             Priority = GetNestedStringOrDefault(fields, "priority", "name"),
             IssueType = GetNestedStringOrDefault(fields, "issuetype", "name"),
             Created = GetDateOrDefault(fields, "created"),
@@ -374,5 +376,99 @@ public sealed class JiraService : IJiraService
         var hours = totalSeconds / 3600;
         var minutes = (totalSeconds % 3600) / 60;
         return hours > 0 ? $"{hours}h {minutes}m" : $"{minutes}m";
+    }
+
+    private static string GetAvatarUrl(JsonElement fields)
+    {
+        if (!fields.TryGetProperty("assignee", out var assignee) || assignee.ValueKind != JsonValueKind.Object)
+            return string.Empty;
+
+        if (!assignee.TryGetProperty("avatarUrls", out var urls) || urls.ValueKind != JsonValueKind.Object)
+            return string.Empty;
+
+        if (urls.TryGetProperty("48x48", out var url48) && url48.ValueKind == JsonValueKind.String)
+            return url48.GetString() ?? string.Empty;
+        if (urls.TryGetProperty("32x32", out var url32) && url32.ValueKind == JsonValueKind.String)
+            return url32.GetString() ?? string.Empty;
+
+        return string.Empty;
+    }
+
+    public async Task<TeamIdentity?> GetMyselfAsync(CancellationToken cancellationToken = default)
+    {
+        var url = "rest/api/3/myself";
+        using var response = await _httpClient.GetAsync(url, cancellationToken);
+        if (!response.IsSuccessStatusCode) return null;
+
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+
+        var avatarUrl = string.Empty;
+        if (root.TryGetProperty("avatarUrls", out var urls) && urls.ValueKind == JsonValueKind.Object)
+        {
+            if (urls.TryGetProperty("48x48", out var url48) && url48.ValueKind == JsonValueKind.String)
+                avatarUrl = url48.GetString() ?? string.Empty;
+        }
+
+        return new TeamIdentity
+        {
+            JiraAccountId = GetStringOrDefault(root, "accountId"),
+            JiraDisplayName = GetStringOrDefault(root, "displayName"),
+            DisplayName = GetStringOrDefault(root, "displayName"),
+            AvatarUrl = avatarUrl
+        };
+    }
+
+    public async Task<IReadOnlyList<TeamIdentity>> GetBoardMembersAsync(CancellationToken cancellationToken = default)
+    {
+        var members = new Dictionary<string, TeamIdentity>(StringComparer.OrdinalIgnoreCase);
+
+        // Get all assignees from recent sprint issues
+        var jql = $"project = {_projectKey} AND sprint in openSprints() OR (project = {_projectKey} AND sprint in closedSprints() AND updated >= -90d)";
+        var startAt = 0;
+
+        while (true)
+        {
+            var fieldsParam = "assignee";
+            var searchUrl = $"rest/api/3/search/jql?jql={Uri.EscapeDataString(jql)}&fields={fieldsParam}&startAt={startAt}&maxResults=100";
+            using var response = await _httpClient.GetAsync(searchUrl, cancellationToken);
+            if (!response.IsSuccessStatusCode) break;
+
+            var json = await response.Content.ReadAsStringAsync(cancellationToken);
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            if (!root.TryGetProperty("issues", out var issues)) break;
+
+            foreach (var issue in issues.EnumerateArray())
+            {
+                if (!issue.TryGetProperty("fields", out var fields)) continue;
+                if (!fields.TryGetProperty("assignee", out var assignee) || assignee.ValueKind != JsonValueKind.Object) continue;
+
+                var accountId = GetStringOrDefault(assignee, "accountId");
+                if (string.IsNullOrEmpty(accountId) || members.ContainsKey(accountId)) continue;
+
+                var avatarUrl = string.Empty;
+                if (assignee.TryGetProperty("avatarUrls", out var urls) && urls.ValueKind == JsonValueKind.Object)
+                {
+                    if (urls.TryGetProperty("48x48", out var url48) && url48.ValueKind == JsonValueKind.String)
+                        avatarUrl = url48.GetString() ?? string.Empty;
+                }
+
+                members[accountId] = new TeamIdentity
+                {
+                    JiraAccountId = accountId,
+                    JiraDisplayName = GetStringOrDefault(assignee, "displayName"),
+                    AvatarUrl = avatarUrl
+                };
+            }
+
+            var total = root.TryGetProperty("total", out var t) && t.ValueKind == JsonValueKind.Number ? t.GetInt32() : 0;
+            startAt += 100;
+            if (total == 0 || startAt >= total) break;
+        }
+
+        return members.Values.ToList();
     }
 }

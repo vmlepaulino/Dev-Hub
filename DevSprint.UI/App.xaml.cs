@@ -33,6 +33,7 @@ namespace DevSprint.UI
 
             var services = new ServiceCollection();
             services.AddSingleton<IConfiguration>(configuration);
+            services.AddSingleton<IIdentityService, IdentityService>();
             services.AddHttpClient<IJiraService, JiraService>();
             services.AddHttpClient<IGitHubService, GitHubService>();
             services.AddTransient<MainViewModel>();

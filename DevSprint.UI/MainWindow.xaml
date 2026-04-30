@@ -147,6 +147,7 @@ Title="Team Hub" Height="700" Width="1200">
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
@@ -191,20 +192,43 @@ Title="Team Hub" Height="700" Width="1200">
                            Margin="0,0,8,0"
                            Foreground="{StaticResource TextSecondaryBrush}"/>
             </Grid>
+
+            <!-- Current user name -->
+            <TextBlock Text="{Binding CurrentUserDisplayName}" FontSize="12"
+                       Foreground="{StaticResource TextSecondaryBrush}"
+                       FontFamily="{StaticResource ContentFont}"
+                       VerticalAlignment="Center" Margin="16,0,0,0"/>
         </StackPanel>
 
-        <TextBlock Grid.Row="1" Text="{Binding ErrorMessage}"
+        <!-- First-run welcome banner -->
+        <Border Grid.Row="1" Background="{StaticResource AccentBrush}" CornerRadius="6"
+                Padding="16,12" Margin="0,0,0,8"
+                Visibility="{Binding IsFirstRun, Converter={StaticResource BoolToVisibilityConverter}}">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Welcome! Your display name:" FontSize="13"
+                           Foreground="White" FontFamily="{StaticResource ContentFont}"
+                           VerticalAlignment="Center"/>
+                <TextBox Text="{Binding WelcomeName, UpdateSourceTrigger=PropertyChanged}"
+                         Width="180" Margin="12,0,12,0" Padding="6,4"
+                         FontFamily="{StaticResource ContentFont}" FontSize="13"/>
+                <Button Content="Confirm" Command="{Binding ConfirmWelcomeCommand}"
+                        Style="{StaticResource AccentButton}" Padding="12,4"
+                        FontSize="12"/>
+            </StackPanel>
+        </Border>
+
+        <TextBlock Grid.Row="2" Text="{Binding ErrorMessage}"
                    Foreground="{StaticResource ErrorBrush}" Margin="0,0,0,4"
                    Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibilityConverter}}"
                    TextWrapping="Wrap" FontFamily="{StaticResource ContentFont}" FontSize="13"/>
 
-        <TextBlock Grid.Row="2" Text="Loading…" FontSize="12"
+        <TextBlock Grid.Row="3" Text="Loading…" FontSize="12"
                    Foreground="{StaticResource TextSecondaryBrush}"
                    FontFamily="{StaticResource ContentFont}"
                    Margin="0,0,0,4"
                    Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
-        <TabControl x:Name="MainTabControl" Grid.Row="3" Style="{StaticResource OutlookTabControl}">
+        <TabControl x:Name="MainTabControl" Grid.Row="4" Style="{StaticResource OutlookTabControl}">
 
             <!-- Product Backlog -->
             <TabItem Style="{StaticResource OutlookTabItem}" Header="Product Backlog">
@@ -333,10 +357,44 @@ Title="Team Hub" Height="700" Width="1200">
                     </ScrollViewer>
                 </DockPanel>
             </TabItem>
+
+            <!-- Team -->
+            <TabItem Style="{StaticResource OutlookTabItem}" Header="Team">
+                <DockPanel Margin="0,12,0,0">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,4,0">
+                        <ItemsControl ItemsSource="{Binding TeamMembers}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="{StaticResource SubtleFillBrush}"
+                                            CornerRadius="6" Padding="14,12" Margin="0,0,0,6">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Border Width="36" Height="36" CornerRadius="18"
+                                                    Background="{StaticResource AccentBrush}" Margin="0,0,14,0">
+                                                <TextBlock Text="{Binding DisplayName[0]}" FontSize="15"
+                                                           Foreground="White" FontWeight="SemiBold"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                           FontFamily="{StaticResource ContentFont}"/>
+                                            </Border>
+                                            <StackPanel VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding DisplayName}" FontSize="13" FontWeight="SemiBold"
+                                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                                           FontFamily="{StaticResource ContentFont}"/>
+                                                <TextBlock Text="{Binding JiraDisplayName}" FontSize="11"
+                                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                                           FontFamily="{StaticResource ContentFont}"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </DockPanel>
+            </TabItem>
         </TabControl>
 
         <!-- Right Sidebar -->
-        <Border Grid.Row="0" Grid.RowSpan="4"
+        <Border Grid.Row="0" Grid.RowSpan="5"
                 HorizontalAlignment="Right"
                 Width="380"
                 Background="{StaticResource CardBrush}"

@@ -10,6 +10,7 @@ public partial class MainViewModel : ObservableObject
 {
     private readonly IJiraService _jiraService;
     private readonly IGitHubService _gitHubService;
+    private readonly IIdentityService _identityService;
 
     private const int InitialPageSize = 100;
     private const int ScrollPageSize = 10;
@@ -96,6 +97,17 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string _searchText = string.Empty;
 
+    [ObservableProperty]
+    private string _currentUserDisplayName = string.Empty;
+
+    [ObservableProperty]
+    private bool _isFirstRun;
+
+    [ObservableProperty]
+    private string _welcomeName = string.Empty;
+
+    public ObservableCollection<TeamIdentity> TeamMembers { get; } = [];
+
     [RelayCommand]
     private async Task SearchAsync()
     {
@@ -139,10 +151,11 @@ public partial class MainViewModel : ObservableObject
     public ObservableCollection<JiraIssue> AssignedIssues { get; } = [];
     public ObservableCollection<JiraIssue> ContributingIssues { get; } = [];
 
-    public MainViewModel(IJiraService jiraService, IGitHubService gitHubService)
+    public MainViewModel(IJiraService jiraService, IGitHubService gitHubService, IIdentityService identityService)
     {
         _jiraService = jiraService;
         _gitHubService = gitHubService;
+        _identityService = identityService;
     }
 
     [RelayCommand]
@@ -154,18 +167,46 @@ public partial class MainViewModel : ObservableObject
         SprintIssues.Clear();
         AssignedIssues.Clear();
         ContributingIssues.Clear();
+        TeamMembers.Clear();
         _sprintKeys = [];
         _contributingKeys = [];
 
+
         try
         {
+            // Load identity store and check first run
+            await _identityService.LoadAsync();
+            var currentUser = _identityService.GetCurrentUser();
+            if (currentUser is null)
+            {
+                var myself = await _jiraService.GetMyselfAsync();
+                if (myself is not null)
+                {
+                    WelcomeName = myself.JiraDisplayName;
+                    IsFirstRun = true;
+                    _identityService.SetCurrentUser(myself);
+                    await _identityService.SaveAsync();
+                    currentUser = myself;
+                }
+            }
+            CurrentUserDisplayName = currentUser?.DisplayName ?? string.Empty;
+
+            // Discover team from board + load data in parallel
+            var boardMembersTask = _jiraService.GetBoardMembersAsync();
             var sprintsTask = _jiraService.GetSprintsForQuarterAsync();
             var sprintKeysTask = _jiraService.GetCurrentSprintKeysAsync();
             var backlogTask = _jiraService.GetProductBacklogAsync(0, InitialPageSize);
             var assignedTask = _jiraService.GetMyIssuesAsync(0, InitialPageSize);
             var contributingTask = _jiraService.GetMyCommentedIssuesAsync(0, InitialPageSize);
 
-            await Task.WhenAll(sprintsTask, sprintKeysTask, backlogTask, assignedTask, contributingTask);
+            await Task.WhenAll(boardMembersTask, sprintsTask, sprintKeysTask, backlogTask, assignedTask, contributingTask);
+
+            // Merge discovered team members
+            _identityService.MergeFromJira(boardMembersTask.Result);
+            await _identityService.SaveAsync();
+
+            foreach (var member in _identityService.GetAll().OrderBy(m => m.DisplayName))
+                TeamMembers.Add(member);
 
             _sprintKeys = sprintKeysTask.Result;
 
@@ -387,5 +428,21 @@ public partial class MainViewModel : ObservableObject
     {
         IsSidebarOpen = false;
         SelectedIssue = null;
+    }
+
+    [RelayCommand]
+    private async Task ConfirmWelcomeAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(WelcomeName))
+        {
+            var current = _identityService.GetCurrentUser();
+            if (current is not null)
+            {
+                current.DisplayName = WelcomeName.Trim();
+                await _identityService.SaveAsync();
+                CurrentUserDisplayName = current.DisplayName;
+            }
+        }
+        IsFirstRun = false;
     }
 }
