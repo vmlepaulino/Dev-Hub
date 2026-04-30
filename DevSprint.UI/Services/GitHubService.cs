@@ -211,9 +211,47 @@ public sealed class GitHubService : IGitHubService
 
     public async Task<IReadOnlyList<BranchInfo>> GetBranchesForIssueAsync(string issueKey, CancellationToken cancellationToken = default)
     {
-        var branches = new List<BranchInfo>();
-        var pattern = issueKey.ToLowerInvariant();
+        var branches = new Dictionary<string, BranchInfo>(StringComparer.OrdinalIgnoreCase);
 
+        // Strategy 1: Search PRs that reference the issue key — get head branch from each
+        foreach (var repo in _repositories)
+        {
+            var query = Uri.EscapeDataString($"{issueKey} repo:{_organization}/{repo} type:pr");
+            var url = $"search/issues?q={query}&per_page=100";
+            using var searchResponse = await _httpClient.GetAsync(url, cancellationToken);
+            if (!searchResponse.IsSuccessStatusCode) continue;
+
+            var searchJson = await searchResponse.Content.ReadAsStringAsync(cancellationToken);
+            using var searchDoc = JsonDocument.Parse(searchJson);
+
+            if (!searchDoc.RootElement.TryGetProperty("items", out var items)) continue;
+
+            foreach (var pr in items.EnumerateArray())
+            {
+                var prNumber = pr.TryGetProperty("number", out var num) && num.ValueKind == JsonValueKind.Number
+                    ? num.GetInt32() : 0;
+                if (prNumber == 0) continue;
+
+                // Fetch PR details to get head branch
+                var prUrl = $"repos/{_organization}/{repo}/pulls/{prNumber}";
+                using var prResponse = await _httpClient.GetAsync(prUrl, cancellationToken);
+                if (!prResponse.IsSuccessStatusCode) continue;
+
+                var prJson = await prResponse.Content.ReadAsStringAsync(cancellationToken);
+                using var prDoc = JsonDocument.Parse(prJson);
+                var prRoot = prDoc.RootElement;
+
+                if (!prRoot.TryGetProperty("head", out var head)) continue;
+                var branchName = GetString(head, "ref");
+                if (string.IsNullOrEmpty(branchName) || branches.ContainsKey(branchName)) continue;
+
+                var branch = await GetBranchInfoAsync(repo, branchName, cancellationToken);
+                if (branch is not null)
+                    branches[branchName] = branch;
+            }
+        }
+
+        // Strategy 2: List branches and match by issue key pattern (contains)
         foreach (var repo in _repositories)
         {
             var page = 1;
@@ -227,52 +265,14 @@ public sealed class GitHubService : IGitHubService
                 using var doc = JsonDocument.Parse(json);
                 var array = doc.RootElement;
 
-                foreach (var branch in array.EnumerateArray())
+                foreach (var branchEl in array.EnumerateArray())
                 {
-                    var name = GetString(branch, "name");
-                    if (!name.Contains(pattern, StringComparison.OrdinalIgnoreCase)) continue;
+                    var name = GetString(branchEl, "name");
+                    if (branches.ContainsKey(name)) continue;
+                    if (!name.Contains(issueKey, StringComparison.OrdinalIgnoreCase)) continue;
 
-                    var commitSha = string.Empty;
-                    var commitDate = DateTime.MinValue;
-                    var commitAuthor = string.Empty;
-
-                    if (branch.TryGetProperty("commit", out var commit))
-                    {
-                        commitSha = GetString(commit, "sha");
-                        if (commitSha.Length > 7) commitSha = commitSha[..7];
-
-                        // Fetch commit details for date and author
-                        var commitUrl = GetString(commit, "url");
-                        if (!string.IsNullOrEmpty(commitUrl))
-                        {
-                            var relativeUrl = commitUrl.Replace("https://api.github.com/", "");
-                            using var commitResponse = await _httpClient.GetAsync(relativeUrl, cancellationToken);
-                            if (commitResponse.IsSuccessStatusCode)
-                            {
-                                var commitJson = await commitResponse.Content.ReadAsStringAsync(cancellationToken);
-                                using var commitDoc = JsonDocument.Parse(commitJson);
-                                var commitRoot = commitDoc.RootElement;
-
-                                if (commitRoot.TryGetProperty("commit", out var commitData))
-                                {
-                                    if (commitData.TryGetProperty("author", out var author))
-                                    {
-                                        commitAuthor = GetString(author, "name");
-                                        commitDate = GetDate(author, "date");
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    branches.Add(new BranchInfo
-                    {
-                        Name = name,
-                        Repository = repo,
-                        LastCommitSha = commitSha,
-                        LastCommitAuthor = commitAuthor,
-                        LastCommitDate = commitDate
-                    });
+                    var branch = await GetBranchInfoFromElement(repo, name, branchEl, cancellationToken);
+                    branches[name] = branch;
                 }
 
                 if (array.GetArrayLength() < 100) break;
@@ -280,7 +280,58 @@ public sealed class GitHubService : IGitHubService
             }
         }
 
-        return branches;
+        return branches.Values.ToList();
+    }
+
+    private async Task<BranchInfo?> GetBranchInfoAsync(string repo, string branchName, CancellationToken cancellationToken)
+    {
+        var url = $"repos/{_organization}/{repo}/branches/{Uri.EscapeDataString(branchName)}";
+        using var response = await _httpClient.GetAsync(url, cancellationToken);
+        if (!response.IsSuccessStatusCode) return null;
+
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        using var doc = JsonDocument.Parse(json);
+        return await GetBranchInfoFromElement(repo, branchName, doc.RootElement, cancellationToken);
+    }
+
+    private async Task<BranchInfo> GetBranchInfoFromElement(string repo, string branchName, JsonElement branchEl, CancellationToken cancellationToken)
+    {
+        var commitSha = string.Empty;
+        var commitDate = DateTime.MinValue;
+        var commitAuthor = string.Empty;
+
+        if (branchEl.TryGetProperty("commit", out var commit))
+        {
+            commitSha = GetString(commit, "sha");
+            if (commitSha.Length > 7) commitSha = commitSha[..7];
+
+            var commitUrl = GetString(commit, "url");
+            if (!string.IsNullOrEmpty(commitUrl))
+            {
+                var relativeUrl = commitUrl.Replace("https://api.github.com/", "");
+                using var commitResponse = await _httpClient.GetAsync(relativeUrl, cancellationToken);
+                if (commitResponse.IsSuccessStatusCode)
+                {
+                    var commitJson = await commitResponse.Content.ReadAsStringAsync(cancellationToken);
+                    using var commitDoc = JsonDocument.Parse(commitJson);
+                    if (commitDoc.RootElement.TryGetProperty("commit", out var commitData)
+                        && commitData.TryGetProperty("author", out var author))
+                    {
+                        commitAuthor = GetString(author, "name");
+                        commitDate = GetDate(author, "date");
+                    }
+                }
+            }
+        }
+
+        return new BranchInfo
+        {
+            Name = branchName,
+            Repository = repo,
+            LastCommitSha = commitSha,
+            LastCommitAuthor = commitAuthor,
+            LastCommitDate = commitDate
+        };
     }
 
     public async Task<IReadOnlyList<TeamMember>> GetContributorsForIssueAsync(string issueKey, CancellationToken cancellationToken = default)
