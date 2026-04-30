@@ -214,41 +214,54 @@ public sealed class GitHubService : IGitHubService
         var branches = new Dictionary<string, BranchInfo>(StringComparer.OrdinalIgnoreCase);
 
         // Strategy 1: Search PRs that reference the issue key — get head branch from each
+        // Uses pulls list endpoint (no search API) to avoid permission issues
         foreach (var repo in _repositories)
         {
-            var query = $"{issueKey} repo:{_organization}/{repo} type:pr";
-            var url = $"search/issues?q={Uri.EscapeDataString(query)}&per_page=100";
-            using var searchResponse = await _httpClient.GetAsync(url, cancellationToken);
-            if (!searchResponse.IsSuccessStatusCode) continue;
-
-            var searchJson = await searchResponse.Content.ReadAsStringAsync(cancellationToken);
-            using var searchDoc = JsonDocument.Parse(searchJson);
-
-            if (!searchDoc.RootElement.TryGetProperty("items", out var items)) continue;
-
-            foreach (var pr in items.EnumerateArray())
+            try
             {
-                var prNumber = pr.TryGetProperty("number", out var num) && num.ValueKind == JsonValueKind.Number
-                    ? num.GetInt32() : 0;
-                if (prNumber == 0) continue;
+                var page = 1;
+                while (true)
+                {
+                    var url = $"repos/{_organization}/{repo}/pulls?state=all&per_page=100&page={page}";
+                    using var response = await _httpClient.GetAsync(url, cancellationToken);
+                    if (!response.IsSuccessStatusCode) break;
 
-                // Fetch PR details to get head branch
-                var prUrl = $"repos/{_organization}/{repo}/pulls/{prNumber}";
-                using var prResponse = await _httpClient.GetAsync(prUrl, cancellationToken);
-                if (!prResponse.IsSuccessStatusCode) continue;
+                    var json = await response.Content.ReadAsStringAsync(cancellationToken);
+                    using var doc = JsonDocument.Parse(json);
+                    var array = doc.RootElement;
 
-                var prJson = await prResponse.Content.ReadAsStringAsync(cancellationToken);
-                using var prDoc = JsonDocument.Parse(prJson);
-                var prRoot = prDoc.RootElement;
+                    if (array.GetArrayLength() == 0) break;
 
-                if (!prRoot.TryGetProperty("head", out var head)) continue;
-                var branchName = GetString(head, "ref");
-                if (string.IsNullOrEmpty(branchName) || branches.ContainsKey(branchName)) continue;
+                    foreach (var pr in array.EnumerateArray())
+                    {
+                        var title = GetString(pr, "title");
+                        var branchName = pr.TryGetProperty("head", out var head) ? GetString(head, "ref") : string.Empty;
 
-                var branch = await GetBranchInfoAsync(repo, branchName, cancellationToken);
-                if (branch is not null)
-                    branches[branchName] = branch;
+                        // Match if PR title or branch name contains the issue key
+                        if (string.IsNullOrEmpty(branchName)) continue;
+                        if (!title.Contains(issueKey, StringComparison.OrdinalIgnoreCase)
+                            && !branchName.Contains(issueKey, StringComparison.OrdinalIgnoreCase)) continue;
+
+                        if (branches.ContainsKey(branchName)) continue;
+
+                        var commitSha = pr.TryGetProperty("head", out var h) ? GetString(h, "sha") : string.Empty;
+                        if (commitSha.Length > 7) commitSha = commitSha[..7];
+
+                        branches[branchName] = new BranchInfo
+                        {
+                            Name = branchName,
+                            Repository = repo,
+                            LastCommitSha = commitSha,
+                            LastCommitAuthor = string.Empty,
+                            LastCommitDate = GetDate(pr, "updated_at")
+                        };
+                    }
+
+                    if (array.GetArrayLength() < 100) break;
+                    page++;
+                }
             }
+            catch { /* skip repo on error */ }
         }
 
         // Strategy 2: List branches and match by issue key pattern (contains)
@@ -337,56 +350,89 @@ public sealed class GitHubService : IGitHubService
     public async Task<IReadOnlyList<TeamMember>> GetContributorsForIssueAsync(string issueKey, CancellationToken cancellationToken = default)
     {
         var members = new Dictionary<string, TeamMember>(StringComparer.OrdinalIgnoreCase);
-        var pattern = issueKey.ToLowerInvariant();
 
         foreach (var repo in _repositories)
         {
-            // Search PRs related to this issue
-            var query = $"{issueKey} repo:{_organization}/{repo} type:pr";
-            var url = $"search/issues?q={Uri.EscapeDataString(query)}&per_page=100";
-            using var response = await _httpClient.GetAsync(url, cancellationToken);
-            if (!response.IsSuccessStatusCode) continue;
-
-            var json = await response.Content.ReadAsStringAsync(cancellationToken);
-            using var doc = JsonDocument.Parse(json);
-
-            if (!doc.RootElement.TryGetProperty("items", out var items)) continue;
-
-            foreach (var pr in items.EnumerateArray())
+            try
             {
-                // PR author = contributing
-                if (pr.TryGetProperty("user", out var user))
+                var page = 1;
+                while (true)
                 {
-                    var login = GetString(user, "login");
-                    if (!string.IsNullOrEmpty(login) && !members.ContainsKey(login))
-                    {
-                        members[login] = new TeamMember
-                        {
-                            Name = login,
-                            AvatarUrl = GetString(user, "avatar_url"),
-                            Role = "Contributing"
-                        };
-                    }
-                }
+                    var url = $"repos/{_organization}/{repo}/pulls?state=all&per_page=100&page={page}";
+                    using var response = await _httpClient.GetAsync(url, cancellationToken);
+                    if (!response.IsSuccessStatusCode) break;
 
-                // Assignees = reviewers/reporters
-                if (pr.TryGetProperty("assignees", out var assignees))
-                {
-                    foreach (var assignee in assignees.EnumerateArray())
+                    var json = await response.Content.ReadAsStringAsync(cancellationToken);
+                    using var doc = JsonDocument.Parse(json);
+                    var array = doc.RootElement;
+
+                    if (array.GetArrayLength() == 0) break;
+
+                    foreach (var pr in array.EnumerateArray())
                     {
-                        var login = GetString(assignee, "login");
-                        if (!string.IsNullOrEmpty(login) && !members.ContainsKey(login))
+                        var title = GetString(pr, "title");
+                        var branchName = pr.TryGetProperty("head", out var head) ? GetString(head, "ref") : string.Empty;
+
+                        if (!title.Contains(issueKey, StringComparison.OrdinalIgnoreCase)
+                            && !branchName.Contains(issueKey, StringComparison.OrdinalIgnoreCase)) continue;
+
+                        // PR author = contributing
+                        if (pr.TryGetProperty("user", out var user))
                         {
-                            members[login] = new TeamMember
+                            var login = GetString(user, "login");
+                            if (!string.IsNullOrEmpty(login) && !members.ContainsKey(login))
                             {
-                                Name = login,
-                                AvatarUrl = GetString(assignee, "avatar_url"),
-                                Role = "Reviewer"
-                            };
+                                members[login] = new TeamMember
+                                {
+                                    Name = login,
+                                    AvatarUrl = GetString(user, "avatar_url"),
+                                    Role = "Contributing"
+                                };
+                            }
+                        }
+
+                        // Assignees = reviewers
+                        if (pr.TryGetProperty("assignees", out var assignees))
+                        {
+                            foreach (var assignee in assignees.EnumerateArray())
+                            {
+                                var login = GetString(assignee, "login");
+                                if (!string.IsNullOrEmpty(login) && !members.ContainsKey(login))
+                                {
+                                    members[login] = new TeamMember
+                                    {
+                                        Name = login,
+                                        AvatarUrl = GetString(assignee, "avatar_url"),
+                                        Role = "Reviewer"
+                                    };
+                                }
+                            }
+                        }
+
+                        // Requested reviewers
+                        if (pr.TryGetProperty("requested_reviewers", out var reviewers))
+                        {
+                            foreach (var reviewer in reviewers.EnumerateArray())
+                            {
+                                var login = GetString(reviewer, "login");
+                                if (!string.IsNullOrEmpty(login) && !members.ContainsKey(login))
+                                {
+                                    members[login] = new TeamMember
+                                    {
+                                        Name = login,
+                                        AvatarUrl = GetString(reviewer, "avatar_url"),
+                                        Role = "Reviewer"
+                                    };
+                                }
+                            }
                         }
                     }
+
+                    if (array.GetArrayLength() < 100) break;
+                    page++;
                 }
             }
+            catch { /* skip repo on error */ }
         }
 
         return members.Values.ToList();
