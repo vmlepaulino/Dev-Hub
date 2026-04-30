@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Windows.Data;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DevSprint.UI.Models;
@@ -97,6 +99,12 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string _searchText = string.Empty;
 
+    partial void OnSearchTextChanged(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            FilterText = string.Empty;
+    }
+
     [ObservableProperty]
     private string _currentUserDisplayName = string.Empty;
 
@@ -108,14 +116,24 @@ public partial class MainViewModel : ObservableObject
 
     public ObservableCollection<TeamIdentity> TeamMembers { get; } = [];
 
+    [ObservableProperty]
+    private string _filterText = string.Empty;
+
     [RelayCommand]
     private async Task SearchAsync()
     {
-        if (string.IsNullOrWhiteSpace(SearchText)) return;
+        if (string.IsNullOrWhiteSpace(SearchText))
+        {
+            FilterText = string.Empty;
+            return;
+        }
 
         var key = SearchText.Trim();
 
-        // Search in-memory first
+        // Filter the current visible list by key (partial match)
+        FilterText = key;
+
+        // If exact match found in any list, also open the sidebar
         var match = BacklogIssues.FirstOrDefault(i => i.Key.Equals(key, StringComparison.OrdinalIgnoreCase))
                  ?? SprintIssues.FirstOrDefault(i => i.Key.Equals(key, StringComparison.OrdinalIgnoreCase))
                  ?? AssignedIssues.FirstOrDefault(i => i.Key.Equals(key, StringComparison.OrdinalIgnoreCase))
@@ -151,11 +169,43 @@ public partial class MainViewModel : ObservableObject
     public ObservableCollection<JiraIssue> AssignedIssues { get; } = [];
     public ObservableCollection<JiraIssue> ContributingIssues { get; } = [];
 
+    public ICollectionView BacklogView { get; }
+    public ICollectionView SprintView { get; }
+    public ICollectionView AssignedView { get; }
+    public ICollectionView ContributingView { get; }
+
     public MainViewModel(IJiraService jiraService, IGitHubService gitHubService, IIdentityService identityService)
     {
         _jiraService = jiraService;
         _gitHubService = gitHubService;
         _identityService = identityService;
+
+        BacklogView = CollectionViewSource.GetDefaultView(BacklogIssues);
+        SprintView = CollectionViewSource.GetDefaultView(SprintIssues);
+        AssignedView = CollectionViewSource.GetDefaultView(AssignedIssues);
+        ContributingView = CollectionViewSource.GetDefaultView(ContributingIssues);
+
+        BacklogView.Filter = IssueMatchesFilter;
+        SprintView.Filter = IssueMatchesFilter;
+        AssignedView.Filter = IssueMatchesFilter;
+        ContributingView.Filter = IssueMatchesFilter;
+    }
+
+    private bool IssueMatchesFilter(object obj)
+    {
+        if (string.IsNullOrWhiteSpace(FilterText)) return true;
+        if (obj is not JiraIssue issue) return false;
+
+        return issue.Key.Contains(FilterText, StringComparison.OrdinalIgnoreCase)
+            || issue.Summary.Contains(FilterText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    partial void OnFilterTextChanged(string value)
+    {
+        BacklogView.Refresh();
+        SprintView.Refresh();
+        AssignedView.Refresh();
+        ContributingView.Refresh();
     }
 
     [RelayCommand]
