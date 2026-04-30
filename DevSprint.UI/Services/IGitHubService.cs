@@ -7,6 +7,6 @@ public interface IGitHubService
     Task<IReadOnlyList<GitHubPullRequest>> GetMyPullRequestsAsync(DateTime from, DateTime to, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<GitHubReview>> GetMyReviewsAsync(DateTime from, DateTime to, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<GitHubCommit>> GetMyCommitsAsync(DateTime from, DateTime to, CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<BranchInfo>> GetBranchesForIssueAsync(string issueKey, CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<TeamMember>> GetContributorsForIssueAsync(string issueKey, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<BranchInfo>> GetBranchesForIssueAsync(string issueKey, DateTime? since = null, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<TeamMember>> GetContributorsForIssueAsync(string issueKey, DateTime? since = null, CancellationToken cancellationToken = default);
 }

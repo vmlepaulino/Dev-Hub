@@ -399,8 +399,9 @@ public partial class MainViewModel : ObservableObject
                 });
             }
 
-            var branchesTask = _gitHubService.GetBranchesForIssueAsync(issue.Key);
-            var contributorsTask = _gitHubService.GetContributorsForIssueAsync(issue.Key);
+            var sprintStart = SelectedSprint?.StartDate;
+            var branchesTask = _gitHubService.GetBranchesForIssueAsync(issue.Key, sprintStart);
+            var contributorsTask = _gitHubService.GetContributorsForIssueAsync(issue.Key, sprintStart);
 
             await Task.WhenAll(branchesTask, contributorsTask);
 

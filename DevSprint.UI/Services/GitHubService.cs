@@ -209,12 +209,12 @@ public sealed class GitHubService : IGitHubService
             : DateTime.MinValue;
     }
 
-    public async Task<IReadOnlyList<BranchInfo>> GetBranchesForIssueAsync(string issueKey, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<BranchInfo>> GetBranchesForIssueAsync(string issueKey, DateTime? since = null, CancellationToken cancellationToken = default)
     {
         var branches = new Dictionary<string, BranchInfo>(StringComparer.OrdinalIgnoreCase);
+        var sinceParam = since.HasValue ? $"&since={since.Value.ToUniversalTime():o}" : string.Empty;
 
-        // Strategy 1: Search PRs that reference the issue key — get head branch from each
-        // Uses pulls list endpoint (no search API) to avoid permission issues
+        // Strategy 1: List PRs sorted by newest, filtered by since date
         foreach (var repo in _repositories)
         {
             try
@@ -222,7 +222,7 @@ public sealed class GitHubService : IGitHubService
                 var page = 1;
                 while (true)
                 {
-                    var url = $"repos/{_organization}/{repo}/pulls?state=all&per_page=100&page={page}";
+                    var url = $"repos/{_organization}/{repo}/pulls?state=all&sort=updated&direction=desc&per_page=100&page={page}";
                     using var response = await _httpClient.GetAsync(url, cancellationToken);
                     if (!response.IsSuccessStatusCode) break;
 
@@ -232,12 +232,19 @@ public sealed class GitHubService : IGitHubService
 
                     if (array.GetArrayLength() == 0) break;
 
+                    var reachedOlderThanSince = false;
                     foreach (var pr in array.EnumerateArray())
                     {
+                        var updatedAt = GetDate(pr, "updated_at");
+                        if (since.HasValue && updatedAt < since.Value)
+                        {
+                            reachedOlderThanSince = true;
+                            break;
+                        }
+
                         var title = GetString(pr, "title");
                         var branchName = pr.TryGetProperty("head", out var head) ? GetString(head, "ref") : string.Empty;
 
-                        // Match if PR title or branch name contains the issue key
                         if (string.IsNullOrEmpty(branchName)) continue;
                         if (!title.Contains(issueKey, StringComparison.OrdinalIgnoreCase)
                             && !branchName.Contains(issueKey, StringComparison.OrdinalIgnoreCase)) continue;
@@ -253,11 +260,11 @@ public sealed class GitHubService : IGitHubService
                             Repository = repo,
                             LastCommitSha = commitSha,
                             LastCommitAuthor = string.Empty,
-                            LastCommitDate = GetDate(pr, "updated_at")
+                            LastCommitDate = updatedAt
                         };
                     }
 
-                    if (array.GetArrayLength() < 100) break;
+                    if (reachedOlderThanSince || array.GetArrayLength() < 100) break;
                     page++;
                 }
             }
@@ -347,7 +354,7 @@ public sealed class GitHubService : IGitHubService
         };
     }
 
-    public async Task<IReadOnlyList<TeamMember>> GetContributorsForIssueAsync(string issueKey, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<TeamMember>> GetContributorsForIssueAsync(string issueKey, DateTime? since = null, CancellationToken cancellationToken = default)
     {
         var members = new Dictionary<string, TeamMember>(StringComparer.OrdinalIgnoreCase);
 
@@ -358,7 +365,7 @@ public sealed class GitHubService : IGitHubService
                 var page = 1;
                 while (true)
                 {
-                    var url = $"repos/{_organization}/{repo}/pulls?state=all&per_page=100&page={page}";
+                    var url = $"repos/{_organization}/{repo}/pulls?state=all&sort=updated&direction=desc&per_page=100&page={page}";
                     using var response = await _httpClient.GetAsync(url, cancellationToken);
                     if (!response.IsSuccessStatusCode) break;
 
@@ -368,8 +375,16 @@ public sealed class GitHubService : IGitHubService
 
                     if (array.GetArrayLength() == 0) break;
 
+                    var reachedOlderThanSince = false;
                     foreach (var pr in array.EnumerateArray())
                     {
+                        var updatedAt = GetDate(pr, "updated_at");
+                        if (since.HasValue && updatedAt < since.Value)
+                        {
+                            reachedOlderThanSince = true;
+                            break;
+                        }
+
                         var title = GetString(pr, "title");
                         var branchName = pr.TryGetProperty("head", out var head) ? GetString(head, "ref") : string.Empty;
 
@@ -428,7 +443,7 @@ public sealed class GitHubService : IGitHubService
                         }
                     }
 
-                    if (array.GetArrayLength() < 100) break;
+                    if (reachedOlderThanSince || array.GetArrayLength() < 100) break;
                     page++;
                 }
             }
