@@ -85,18 +85,38 @@ public partial class MainViewModel : ObservableObject
     private string _searchText = string.Empty;
 
     [RelayCommand]
-    private void Search()
+    private async Task SearchAsync()
     {
         if (string.IsNullOrWhiteSpace(SearchText)) return;
 
-        var key = SearchText.Trim().ToUpperInvariant();
+        var key = SearchText.Trim();
+
+        // Search in-memory first
         var match = BacklogIssues.FirstOrDefault(i => i.Key.Equals(key, StringComparison.OrdinalIgnoreCase))
                  ?? SprintIssues.FirstOrDefault(i => i.Key.Equals(key, StringComparison.OrdinalIgnoreCase))
                  ?? AssignedIssues.FirstOrDefault(i => i.Key.Equals(key, StringComparison.OrdinalIgnoreCase))
                  ?? ContributingIssues.FirstOrDefault(i => i.Key.Equals(key, StringComparison.OrdinalIgnoreCase));
 
         if (match is not null)
-            SelectIssueCommand.Execute(match);
+        {
+            await SelectIssueCommand.ExecuteAsync(match);
+            return;
+        }
+
+        // Fall back to Jira API
+        try
+        {
+            var issue = await _jiraService.GetIssueByKeyAsync(key);
+            if (issue is not null)
+            {
+                issue.IsCurrentSprint = _sprintKeys.Contains(issue.Key);
+                await SelectIssueCommand.ExecuteAsync(issue);
+            }
+        }
+        catch
+        {
+            // Silently ignore search errors
+        }
     }
 
     public ObservableCollection<TeamMember> SidebarTeamMembers { get; } = [];

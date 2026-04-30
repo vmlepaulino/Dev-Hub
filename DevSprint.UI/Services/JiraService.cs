@@ -99,6 +99,13 @@ public sealed class JiraService : IJiraService
         return keys;
     }
 
+    public async Task<JiraIssue?> GetIssueByKeyAsync(string issueKey, CancellationToken cancellationToken = default)
+    {
+        var jql = $"key = {issueKey}";
+        var result = await SearchIssuesAsync(jql, 0, 1, cancellationToken);
+        return result.Items.Count > 0 ? result.Items[0] : null;
+    }
+
     private async Task<PagedResult<JiraIssue>> SearchIssuesAsync(string jql, int startAt, int maxResults, CancellationToken cancellationToken)
     {
         var fields = "summary,status,assignee,priority,issuetype,created,updated,timespent,statuscategorychangedate,description,comment,customfield_10037,story_points";

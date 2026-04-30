@@ -10,4 +10,5 @@ public interface IJiraService
     Task<PagedResult<JiraIssue>> GetMyCommentedIssuesAsync(int startAt = 0, int maxResults = 100, CancellationToken cancellationToken = default);
     Task<HashSet<string>> GetCurrentSprintKeysAsync(CancellationToken cancellationToken = default);
     Task<SprintInfo?> GetActiveSprintInfoAsync(CancellationToken cancellationToken = default);
+    Task<JiraIssue?> GetIssueByKeyAsync(string issueKey, CancellationToken cancellationToken = default);
 }
