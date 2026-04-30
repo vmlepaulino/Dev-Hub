@@ -39,9 +39,9 @@ public sealed class GitHubService : IGitHubService
         var page = 1;
         while (true)
         {
-            var repoQualifiers = string.Join("+", _repositories.Select(r => $"repo:{_organization}/{r}"));
-            var query = $"author:{_username}+type:pr+created:{fromStr}..{toStr}+{repoQualifiers}";
-            var url = $"search/issues?q={query}&per_page=100&page={page}";
+            var repoQualifiers = string.Join(" ", _repositories.Select(r => $"repo:{_organization}/{r}"));
+            var query = $"author:{_username} type:pr created:{fromStr}..{toStr} {repoQualifiers}";
+            var url = $"search/issues?q={Uri.EscapeDataString(query)}&per_page=100&page={page}";
 
             using var response = await _httpClient.GetAsync(url, cancellationToken);
             response.EnsureSuccessStatusCode();
@@ -95,8 +95,8 @@ public sealed class GitHubService : IGitHubService
             var fromStr = from.ToString("yyyy-MM-dd");
             var toStr = to.ToString("yyyy-MM-dd");
             var repoQualifier = $"repo:{_organization}/{repo}";
-            var query = $"reviewed-by:{_username}+type:pr+updated:{fromStr}..{toStr}+{repoQualifier}";
-            var url = $"search/issues?q={query}&per_page=100";
+            var query = $"reviewed-by:{_username} type:pr updated:{fromStr}..{toStr} {repoQualifier}";
+            var url = $"search/issues?q={Uri.EscapeDataString(query)}&per_page=100";
 
             using var searchResponse = await _httpClient.GetAsync(url, cancellationToken);
             searchResponse.EnsureSuccessStatusCode();
@@ -216,8 +216,8 @@ public sealed class GitHubService : IGitHubService
         // Strategy 1: Search PRs that reference the issue key — get head branch from each
         foreach (var repo in _repositories)
         {
-            var query = $"{issueKey}+repo:{_organization}/{repo}+type:pr";
-            var url = $"search/issues?q={query}&per_page=100";
+            var query = $"{issueKey} repo:{_organization}/{repo} type:pr";
+            var url = $"search/issues?q={Uri.EscapeDataString(query)}&per_page=100";
             using var searchResponse = await _httpClient.GetAsync(url, cancellationToken);
             if (!searchResponse.IsSuccessStatusCode) continue;
 
@@ -342,8 +342,8 @@ public sealed class GitHubService : IGitHubService
         foreach (var repo in _repositories)
         {
             // Search PRs related to this issue
-            var query = $"{issueKey}+repo:{_organization}/{repo}+type:pr";
-            var url = $"search/issues?q={query}&per_page=100";
+            var query = $"{issueKey} repo:{_organization}/{repo} type:pr";
+            var url = $"search/issues?q={Uri.EscapeDataString(query)}&per_page=100";
             using var response = await _httpClient.GetAsync(url, cancellationToken);
             if (!response.IsSuccessStatusCode) continue;
 
