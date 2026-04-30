@@ -211,28 +211,65 @@ public sealed class JiraService : IJiraService
 
     public async Task<SprintInfo?> GetActiveSprintInfoAsync(CancellationToken cancellationToken = default)
     {
-        var url = $"rest/agile/1.0/board/{_boardId}/sprint?state=active";
-        using var response = await _httpClient.GetAsync(url, cancellationToken);
-        if (!response.IsSuccessStatusCode) return null;
+        var sprints = await GetBoardSprintsAsync("active", cancellationToken);
+        return sprints.Count > 0 ? sprints[0] : null;
+    }
 
-        var json = await response.Content.ReadAsStringAsync(cancellationToken);
-        using var doc = JsonDocument.Parse(json);
+    public async Task<IReadOnlyList<SprintInfo>> GetSprintsForQuarterAsync(CancellationToken cancellationToken = default)
+    {
+        var now = DateTime.Today;
+        var quarterStart = new DateTime(now.Year, ((now.Month - 1) / 3) * 3 + 1, 1);
 
-        if (!doc.RootElement.TryGetProperty("values", out var values)) return null;
+        var allSprints = new List<SprintInfo>();
+        allSprints.AddRange(await GetBoardSprintsAsync("active", cancellationToken));
+        allSprints.AddRange(await GetBoardSprintsAsync("closed", cancellationToken));
 
-        foreach (var sprint in values.EnumerateArray())
+        return allSprints
+            .Where(s => s.StartDate >= quarterStart || s.EndDate >= quarterStart)
+            .OrderByDescending(s => s.StartDate)
+            .ToList();
+    }
+
+    public async Task<PagedResult<JiraIssue>> GetSprintIssuesAsync(int sprintId, int startAt = 0, int maxResults = 100, CancellationToken cancellationToken = default)
+    {
+        var jql = $"project = {_projectKey} AND sprint = {sprintId} ORDER BY status ASC, updated DESC";
+        return await SearchIssuesAsync(jql, startAt, maxResults, cancellationToken);
+    }
+
+    private async Task<List<SprintInfo>> GetBoardSprintsAsync(string state, CancellationToken cancellationToken)
+    {
+        var sprints = new List<SprintInfo>();
+        var startAt = 0;
+
+        while (true)
         {
-            return new SprintInfo
+            var url = $"rest/agile/1.0/board/{_boardId}/sprint?state={state}&startAt={startAt}&maxResults=50";
+            using var response = await _httpClient.GetAsync(url, cancellationToken);
+            if (!response.IsSuccessStatusCode) break;
+
+            var json = await response.Content.ReadAsStringAsync(cancellationToken);
+            using var doc = JsonDocument.Parse(json);
+
+            if (!doc.RootElement.TryGetProperty("values", out var values)) break;
+
+            foreach (var sprint in values.EnumerateArray())
             {
-                Id = sprint.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.Number ? id.GetInt32() : 0,
-                Name = GetStringOrDefault(sprint, "name"),
-                State = GetStringOrDefault(sprint, "state"),
-                StartDate = GetNullableDateOrDefault(sprint, "startDate"),
-                EndDate = GetNullableDateOrDefault(sprint, "endDate")
-            };
+                sprints.Add(new SprintInfo
+                {
+                    Id = sprint.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.Number ? id.GetInt32() : 0,
+                    Name = GetStringOrDefault(sprint, "name"),
+                    State = GetStringOrDefault(sprint, "state"),
+                    StartDate = GetNullableDateOrDefault(sprint, "startDate"),
+                    EndDate = GetNullableDateOrDefault(sprint, "endDate")
+                });
+            }
+
+            var isLast = doc.RootElement.TryGetProperty("isLast", out var last) && last.GetBoolean();
+            if (isLast || values.GetArrayLength() < 50) break;
+            startAt += 50;
         }
 
-        return null;
+        return sprints;
     }
 
     private static DateTime? GetNullableDateOrDefault(JsonElement element, string propertyName)

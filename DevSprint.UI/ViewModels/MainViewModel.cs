@@ -51,6 +51,7 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private int _backlogInAnalysisCount;
 
+
     [ObservableProperty]
     private string _sprintStatus = string.Empty;
 
@@ -65,6 +66,17 @@ public partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     private string _sprintStateSummary = string.Empty;
+
+    [ObservableProperty]
+    private SprintInfo? _selectedSprint;
+
+    public ObservableCollection<SprintInfo> AvailableSprints { get; } = [];
+
+    partial void OnSelectedSprintChanged(SprintInfo? value)
+    {
+        if (value is not null)
+            _ = LoadSprintDataAsync(value);
+    }
 
     [ObservableProperty]
     private string _assignedStatus = string.Empty;
@@ -147,23 +159,25 @@ public partial class MainViewModel : ObservableObject
 
         try
         {
-            var sprintInfoTask = _jiraService.GetActiveSprintInfoAsync();
+            var sprintsTask = _jiraService.GetSprintsForQuarterAsync();
             var sprintKeysTask = _jiraService.GetCurrentSprintKeysAsync();
             var backlogTask = _jiraService.GetProductBacklogAsync(0, InitialPageSize);
-            var sprintTask = _jiraService.GetCurrentSprintIssuesAsync(0, InitialPageSize);
             var assignedTask = _jiraService.GetMyIssuesAsync(0, InitialPageSize);
             var contributingTask = _jiraService.GetMyCommentedIssuesAsync(0, InitialPageSize);
 
-            await Task.WhenAll(sprintInfoTask, sprintKeysTask, backlogTask, sprintTask, assignedTask, contributingTask);
+            await Task.WhenAll(sprintsTask, sprintKeysTask, backlogTask, assignedTask, contributingTask);
 
             _sprintKeys = sprintKeysTask.Result;
 
-            var sprintInfo = sprintInfoTask.Result;
-            if (sprintInfo is not null)
-            {
-                SprintName = sprintInfo.Name;
-                SprintDateRange = $"{sprintInfo.StartDate:dd/MM/yyyy} — {sprintInfo.EndDate:dd/MM/yyyy}";
-            }
+            // Populate sprint dropdown
+            AvailableSprints.Clear();
+            foreach (var s in sprintsTask.Result)
+                AvailableSprints.Add(s);
+
+            // Select the active sprint (or first)
+            var activeSprint = AvailableSprints.FirstOrDefault(s => s.State.Equals("active", StringComparison.OrdinalIgnoreCase))
+                            ?? AvailableSprints.FirstOrDefault();
+            SelectedSprint = activeSprint;
 
             var backlogResult = backlogTask.Result;
             foreach (var issue in backlogResult.Items)
@@ -175,16 +189,6 @@ public partial class MainViewModel : ObservableObject
             _backlogHasMore = backlogResult.HasMore;
             BacklogTotalCount = backlogResult.Total;
             UpdateBacklogStats();
-
-            var sprintResult = sprintTask.Result;
-            foreach (var issue in sprintResult.Items)
-            {
-                issue.IsCurrentSprint = true;
-                SprintIssues.Add(issue);
-            }
-            _sprintNextStartAt = sprintResult.NextStartAt;
-            _sprintHasMore = sprintResult.HasMore;
-            UpdateSprintStats();
 
             var assignedResult = assignedTask.Result;
             foreach (var issue in assignedResult.Items)
@@ -239,11 +243,11 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task ScrollSprintAsync()
     {
-        if (!_sprintHasMore || _isLoadingMoreSprint) return;
+        if (!_sprintHasMore || _isLoadingMoreSprint || SelectedSprint is null) return;
         _isLoadingMoreSprint = true;
         try
         {
-            var result = await _jiraService.GetCurrentSprintIssuesAsync(_sprintNextStartAt, ScrollPageSize);
+            var result = await _jiraService.GetSprintIssuesAsync(SelectedSprint.Id, _sprintNextStartAt, ScrollPageSize);
             foreach (var issue in result.Items) { issue.IsCurrentSprint = true; SprintIssues.Add(issue); }
             _sprintNextStartAt = result.NextStartAt;
             _sprintHasMore = result.HasMore;
@@ -288,6 +292,29 @@ public partial class MainViewModel : ObservableObject
         }
         catch (Exception ex) { ErrorMessage = ex.Message; }
         finally { _isLoadingMoreContributing = false; }
+    }
+
+    private async Task LoadSprintDataAsync(SprintInfo sprint)
+    {
+        SprintIssues.Clear();
+        SprintName = sprint.Name;
+        SprintDateRange = sprint.StartDate.HasValue && sprint.EndDate.HasValue
+            ? $"{sprint.StartDate:dd/MM/yyyy} — {sprint.EndDate:dd/MM/yyyy}"
+            : string.Empty;
+
+        try
+        {
+            var result = await _jiraService.GetSprintIssuesAsync(sprint.Id, 0, InitialPageSize);
+            foreach (var issue in result.Items)
+            {
+                issue.IsCurrentSprint = true;
+                SprintIssues.Add(issue);
+            }
+            _sprintNextStartAt = result.NextStartAt;
+            _sprintHasMore = result.HasMore;
+            UpdateSprintStats();
+        }
+        catch (Exception ex) { ErrorMessage = ex.Message; }
     }
 
     private void UpdateBacklogStats()
