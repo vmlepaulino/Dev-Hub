@@ -216,7 +216,7 @@ public sealed class GitHubService : IGitHubService
         // Strategy 1: Search PRs that reference the issue key — get head branch from each
         foreach (var repo in _repositories)
         {
-            var query = Uri.EscapeDataString($"{issueKey} repo:{_organization}/{repo} type:pr");
+            var query = $"{issueKey}+repo:{_organization}/{repo}+type:pr";
             var url = $"search/issues?q={query}&per_page=100";
             using var searchResponse = await _httpClient.GetAsync(url, cancellationToken);
             if (!searchResponse.IsSuccessStatusCode) continue;
