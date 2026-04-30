@@ -82,6 +82,8 @@ public sealed class IdentityService : IIdentityService
             {
                 existing.JiraDisplayName = d.JiraDisplayName;
                 existing.AvatarUrl = d.AvatarUrl;
+                if (!string.IsNullOrEmpty(d.Email))
+                    existing.Email = d.Email;
                 if (string.IsNullOrEmpty(existing.DisplayName))
                     existing.DisplayName = d.JiraDisplayName;
             }

@@ -416,6 +416,7 @@ public sealed class JiraService : IJiraService
             JiraAccountId = GetStringOrDefault(root, "accountId"),
             JiraDisplayName = GetStringOrDefault(root, "displayName"),
             DisplayName = GetStringOrDefault(root, "displayName"),
+            Email = GetStringOrDefault(root, "emailAddress"),
             AvatarUrl = avatarUrl
         };
     }
@@ -460,6 +461,7 @@ public sealed class JiraService : IJiraService
                 {
                     JiraAccountId = accountId,
                     JiraDisplayName = GetStringOrDefault(assignee, "displayName"),
+                    Email = GetStringOrDefault(assignee, "emailAddress"),
                     AvatarUrl = avatarUrl
                 };
             }

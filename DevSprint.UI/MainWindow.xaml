@@ -379,6 +379,9 @@ Title="Team Hub" Height="700" Width="1200">
                                                 <TextBlock Text="{Binding DisplayName}" FontSize="13" FontWeight="SemiBold"
                                                            Foreground="{StaticResource TextPrimaryBrush}"
                                                            FontFamily="{StaticResource ContentFont}"/>
+                                                <TextBlock Text="{Binding Email}" FontSize="11"
+                                                           Foreground="{StaticResource AccentBrush}"
+                                                           FontFamily="{StaticResource ContentFont}"/>
                                                 <TextBlock Text="{Binding JiraDisplayName}" FontSize="11"
                                                            Foreground="{StaticResource TextSecondaryBrush}"
                                                            FontFamily="{StaticResource ContentFont}"/>
