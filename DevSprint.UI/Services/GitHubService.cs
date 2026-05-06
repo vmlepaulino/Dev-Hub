@@ -21,8 +21,8 @@ public sealed class GitHubService : IGitHubService
         _httpClient = httpClient;
         _httpClient.BaseAddress = new Uri("https://api.github.com/");
 
-        var token = configuration["GitHub:ApiToken"]!;
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        // NOTE: Authorization is set per-request by GitHubBearerTokenHandler
+        // (see Auth/BearerTokenHandler.cs). This constructor must not touch it.
         _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
         _httpClient.DefaultRequestHeaders.Add("X-GitHub-Api-Version", "2022-11-28");
         _httpClient.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("DevSprint", "1.0"));

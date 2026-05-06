@@ -5,6 +5,7 @@ using System.Net;
 using System.Windows.Data;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using DevSprint.UI.Auth.GitHub;
 using DevSprint.UI.Models;
 using DevSprint.UI.Services;
 
@@ -15,6 +16,7 @@ public partial class MainViewModel : ObservableObject
     private readonly IJiraService _jiraService;
     private readonly IGitHubService _gitHubService;
     private readonly IIdentityService _identityService;
+    private readonly IGitHubAuthService _gitHubAuthService;
 
     private const int InitialPageSize = 100;
     private const int ScrollPageSize = 10;
@@ -111,6 +113,17 @@ public partial class MainViewModel : ObservableObject
     private string _currentUserDisplayName = string.Empty;
 
     [ObservableProperty]
+    private bool _isGitHubSignedIn;
+
+    [RelayCommand]
+    private async Task SignOutGitHubAsync()
+    {
+        await _gitHubAuthService.SignOutAsync();
+        IsGitHubSignedIn = false;
+        ErrorMessage = "Signed out of GitHub. The next GitHub action will prompt you to sign in again.";
+    }
+
+    [ObservableProperty]
     private bool _isFirstRun;
 
     [ObservableProperty]
@@ -187,11 +200,18 @@ public partial class MainViewModel : ObservableObject
     public ICollectionView AssignedView { get; }
     public ICollectionView ContributingView { get; }
 
-    public MainViewModel(IJiraService jiraService, IGitHubService gitHubService, IIdentityService identityService)
+    public MainViewModel(
+        IJiraService jiraService,
+        IGitHubService gitHubService,
+        IIdentityService identityService,
+        IGitHubAuthService gitHubAuthService)
     {
         _jiraService = jiraService;
         _gitHubService = gitHubService;
         _identityService = identityService;
+        _gitHubAuthService = gitHubAuthService;
+
+        IsGitHubSignedIn = _gitHubAuthService.IsSignedIn;
 
         BacklogView = CollectionViewSource.GetDefaultView(BacklogIssues);
         SprintView = CollectionViewSource.GetDefaultView(SprintIssues);

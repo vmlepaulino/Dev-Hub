@@ -231,6 +231,15 @@ Title="Team Hub" Height="700" Width="1200">
                        Foreground="{StaticResource TextSecondaryBrush}"
                        FontFamily="{StaticResource ContentFont}"
                        VerticalAlignment="Center" Margin="16,0,0,0"/>
+
+            <!-- GitHub sign-out -->
+            <Button Content="Sign out of GitHub"
+                    Command="{Binding SignOutGitHubCommand}"
+                    Style="{StaticResource CompactLinkButton}"
+                    Margin="12,0,0,0"
+                    VerticalAlignment="Center"
+                    ToolTip="Clear cached GitHub tokens. The next GitHub action will prompt for sign-in."
+                    Visibility="{Binding IsGitHubSignedIn, Converter={StaticResource BoolToVisibilityConverter}}"/>
         </StackPanel>
 
         <!-- First-run welcome banner -->
