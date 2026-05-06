@@ -6,8 +6,13 @@ using System.Windows.Data;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DevSprint.UI.Auth.GitHub;
+using DevSprint.UI.Auth.Jira;
 using DevSprint.UI.Models;
+using DevSprint.UI.Onboarding;
 using DevSprint.UI.Services;
+using DevSprint.UI.Views;
+using Microsoft.Extensions.Configuration;
+using System.Windows;
 
 namespace DevSprint.UI.ViewModels;
 
@@ -17,6 +22,9 @@ public partial class MainViewModel : ObservableObject
     private readonly IGitHubService _gitHubService;
     private readonly IIdentityService _identityService;
     private readonly IGitHubAuthService _gitHubAuthService;
+    private readonly IJiraAuthService _jiraAuthService;
+    private readonly IOnboardingService _onboardingService;
+    private readonly IConfiguration _configuration;
 
     private const int InitialPageSize = 100;
     private const int ScrollPageSize = 10;
@@ -115,12 +123,47 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private bool _isGitHubSignedIn;
 
+    [ObservableProperty]
+    private bool _isJiraSignedIn;
+
     [RelayCommand]
     private async Task SignOutGitHubAsync()
     {
         await _gitHubAuthService.SignOutAsync();
         IsGitHubSignedIn = false;
         ErrorMessage = "Signed out of GitHub. The next GitHub action will prompt you to sign in again.";
+    }
+
+    [RelayCommand]
+    private async Task SignOutJiraAsync()
+    {
+        await _jiraAuthService.SignOutAsync();
+        IsJiraSignedIn = false;
+        ErrorMessage = "Signed out of Jira. The next Jira action will prompt you to sign in again.";
+    }
+
+    [RelayCommand]
+    private void Reconfigure()
+    {
+        var snapshot = _onboardingService.Snapshot(_configuration);
+        var vm = new OnboardingWizardViewModel(_onboardingService, snapshot);
+        var dialog = new OnboardingWizardDialog(vm)
+        {
+            Owner = Application.Current.MainWindow
+        };
+
+        if (dialog.ShowDialog() != true) return;
+
+        // Configuration is loaded once at startup; new values won't take effect
+        // until the app restarts. Tell the user, then close the app for them.
+        var result = MessageBox.Show(
+            "Settings saved. DevSprint needs to restart to pick up the new values.\n\nClose the application now?",
+            "Restart required",
+            MessageBoxButton.OKCancel,
+            MessageBoxImage.Information);
+
+        if (result == MessageBoxResult.OK)
+            Application.Current.Shutdown();
     }
 
     [ObservableProperty]
@@ -204,14 +247,21 @@ public partial class MainViewModel : ObservableObject
         IJiraService jiraService,
         IGitHubService gitHubService,
         IIdentityService identityService,
-        IGitHubAuthService gitHubAuthService)
+        IGitHubAuthService gitHubAuthService,
+        IJiraAuthService jiraAuthService,
+        IOnboardingService onboardingService,
+        IConfiguration configuration)
     {
         _jiraService = jiraService;
         _gitHubService = gitHubService;
         _identityService = identityService;
         _gitHubAuthService = gitHubAuthService;
+        _jiraAuthService = jiraAuthService;
+        _onboardingService = onboardingService;
+        _configuration = configuration;
 
         IsGitHubSignedIn = _gitHubAuthService.IsSignedIn;
+        IsJiraSignedIn = _jiraAuthService.IsSignedIn;
 
         BacklogView = CollectionViewSource.GetDefaultView(BacklogIssues);
         SprintView = CollectionViewSource.GetDefaultView(SprintIssues);

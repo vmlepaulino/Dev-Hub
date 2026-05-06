@@ -240,6 +240,23 @@ Title="Team Hub" Height="700" Width="1200">
                     VerticalAlignment="Center"
                     ToolTip="Clear cached GitHub tokens. The next GitHub action will prompt for sign-in."
                     Visibility="{Binding IsGitHubSignedIn, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+            <!-- Jira sign-out -->
+            <Button Content="Sign out of Jira"
+                    Command="{Binding SignOutJiraCommand}"
+                    Style="{StaticResource CompactLinkButton}"
+                    Margin="8,0,0,0"
+                    VerticalAlignment="Center"
+                    ToolTip="Clear cached Jira tokens. The next Jira action will prompt for sign-in."
+                    Visibility="{Binding IsJiraSignedIn, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+            <!-- Reconfigure -->
+            <Button Content="Reconfigure…"
+                    Command="{Binding ReconfigureCommand}"
+                    Style="{StaticResource CompactLinkButton}"
+                    Margin="8,0,0,0"
+                    VerticalAlignment="Center"
+                    ToolTip="Edit your Backlog Management and Code Repository settings. Changes apply on next launch."/>
         </StackPanel>
 
         <!-- First-run welcome banner -->

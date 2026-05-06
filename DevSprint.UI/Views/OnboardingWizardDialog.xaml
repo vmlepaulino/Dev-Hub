@@ -1,0 +1,191 @@
+<Window x:Class="DevSprint.UI.Views.OnboardingWizardDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:DevSprint.UI.ViewModels"
+        xmlns:b="clr-namespace:DevSprint.UI.Behaviors"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance Type=vm:OnboardingWizardViewModel}"
+        Style="{StaticResource FluentWindow}"
+        Title="DevSprint setup"
+        Width="640" Height="620"
+        MinWidth="540" MinHeight="500"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="CanResize"
+        ShowInTaskbar="True">
+
+    <Window.Resources>
+        <!-- Single-row template used inside the ItemsControl below -->
+        <DataTemplate x:Key="OnboardingFieldRowTemplate" DataType="{x:Type vm:OnboardingFieldRowViewModel}">
+            <StackPanel Margin="0,0,0,14">
+                <DockPanel LastChildFill="False" Margin="0,0,0,4">
+                    <TextBlock Text="{Binding Field.Label}"
+                               FontWeight="SemiBold" FontSize="13"
+                               FontFamily="{StaticResource ContentFont}"
+                               Foreground="{StaticResource TextPrimaryBrush}"
+                               DockPanel.Dock="Left"/>
+                    <Button DockPanel.Dock="Right"
+                            Content="Where do I find this?"
+                            Style="{StaticResource CompactLinkButton}"
+                            Padding="6,2"
+                            Command="{Binding OpenHelpUrlCommand}"
+                            Visibility="{Binding HasHelpUrl, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                </DockPanel>
+
+                <!-- Regular text input -->
+                <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"
+                         Tag="{Binding Field.Placeholder}"
+                         FontFamily="{StaticResource ContentFont}" FontSize="13"
+                         Visibility="{Binding Field.IsSecret, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Invert}">
+                    <TextBox.Style>
+                        <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ValidationMessage, Converter={StaticResource StringToVisibilityConverter}}" Value="Visible">
+                                    <Setter Property="BorderBrush" Value="{StaticResource ErrorBrush}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBox.Style>
+                </TextBox>
+
+                <!-- Password input — only visible when Field.IsSecret is true -->
+                <PasswordBox b:PasswordBoxHelper.BindPassword="True"
+                             b:PasswordBoxHelper.BoundPassword="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             FontFamily="{StaticResource ContentFont}" FontSize="13"
+                             Padding="10,8"
+                             Background="{StaticResource ControlFillBrush}"
+                             BorderBrush="{StaticResource ControlBorderBrush}"
+                             BorderThickness="1"
+                             Visibility="{Binding Field.IsSecret, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                <TextBlock Text="{Binding Field.HelpText}"
+                           FontSize="11"
+                           FontFamily="{StaticResource ContentFont}"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           TextWrapping="Wrap"
+                           Margin="0,4,0,0"
+                           Visibility="{Binding Field.HelpText, Converter={StaticResource StringToVisibilityConverter}}"/>
+
+                <TextBlock Text="{Binding ValidationMessage}"
+                           FontSize="11"
+                           FontFamily="{StaticResource ContentFont}"
+                           Foreground="{StaticResource ErrorBrush}"
+                           TextWrapping="Wrap"
+                           Margin="0,4,0,0"
+                           Visibility="{Binding ValidationMessage, Converter={StaticResource StringToVisibilityConverter}}"/>
+            </StackPanel>
+        </DataTemplate>
+    </Window.Resources>
+
+    <Border Background="{StaticResource SurfaceBrush}" Padding="32,28">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Step indicator -->
+            <TextBlock Grid.Row="0"
+                       Text="{Binding StepIndicator}"
+                       FontSize="11"
+                       FontFamily="{StaticResource ContentFont}"
+                       Foreground="{StaticResource AccentBrush}"
+                       FontWeight="SemiBold"
+                       Margin="0,0,0,4"/>
+
+            <!-- Title -->
+            <TextBlock Grid.Row="1"
+                       Text="{Binding CurrentStep.Title}"
+                       FontSize="22" FontWeight="SemiBold"
+                       FontFamily="{StaticResource ContentFont}"
+                       Foreground="{StaticResource TextPrimaryBrush}"
+                       Margin="0,0,0,4"/>
+
+            <!-- Description + (optional) registration link -->
+            <DockPanel Grid.Row="2" LastChildFill="True" Margin="0,0,0,16">
+                <Button DockPanel.Dock="Right"
+                        Content="Open developer console"
+                        Style="{StaticResource CompactLinkButton}"
+                        Command="{Binding OpenRegistrationUrlCommand}"
+                        Margin="12,0,0,0"
+                        Visibility="{Binding CurrentStep.RegistrationUrl, Converter={StaticResource StringToVisibilityConverter}}"/>
+                <TextBlock Text="{Binding CurrentStep.Description}"
+                           FontSize="13"
+                           FontFamily="{StaticResource ContentFont}"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           TextWrapping="Wrap"
+                           VerticalAlignment="Center"/>
+            </DockPanel>
+
+            <!-- Form fields for the current step -->
+            <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto" Padding="0,0,4,0">
+                <ItemsControl ItemsSource="{Binding CurrentStep.Rows}"
+                              ItemTemplate="{StaticResource OnboardingFieldRowTemplate}"/>
+            </ScrollViewer>
+
+            <!-- Optional post-step note -->
+            <Border Grid.Row="4"
+                    Background="{StaticResource SubtleFillBrush}"
+                    BorderBrush="{StaticResource CardBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    Padding="14,10"
+                    Margin="0,12,0,0"
+                    Visibility="{Binding CurrentStep.HasPostStepNote, Converter={StaticResource BoolToVisibilityConverter}}">
+                <TextBlock Text="{Binding CurrentStep.PostStepNote}"
+                           FontSize="11"
+                           FontFamily="Consolas, Courier New"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           TextWrapping="Wrap"/>
+            </Border>
+
+            <!-- Status / save error -->
+            <TextBlock Grid.Row="5"
+                       Text="{Binding StatusMessage}"
+                       FontSize="12"
+                       FontFamily="{StaticResource ContentFont}"
+                       Foreground="{StaticResource ErrorBrush}"
+                       TextWrapping="Wrap"
+                       Margin="0,12,0,0"
+                       Visibility="{Binding StatusMessage, Converter={StaticResource StringToVisibilityConverter}}"/>
+
+            <!-- Footer buttons -->
+            <Grid Grid.Row="6" Margin="0,16,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <Button Grid.Column="0"
+                        Content="Cancel"
+                        Style="{StaticResource CompactLinkButton}"
+                        Command="{Binding CancelCommand}"
+                        Padding="14,6"/>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <Button Content="Back"
+                            Style="{StaticResource CompactLinkButton}"
+                            Command="{Binding BackCommand}"
+                            Padding="14,6"
+                            Margin="0,0,8,0"
+                            Visibility="{Binding IsOnFirstStep, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Invert}"/>
+                    <Button Content="Next"
+                            Style="{StaticResource AccentButton}"
+                            Command="{Binding NextCommand}"
+                            Visibility="{Binding IsOnLastStep, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Invert}"/>
+                    <Button Content="Save and continue"
+                            Style="{StaticResource AccentButton}"
+                            Command="{Binding SaveCommand}"
+                            Visibility="{Binding IsOnLastStep, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

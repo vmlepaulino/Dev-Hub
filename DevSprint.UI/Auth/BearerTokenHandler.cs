@@ -50,3 +50,9 @@ public sealed class GitHubBearerTokenHandler : BearerTokenHandler
 {
     public GitHubBearerTokenHandler(GitHub.IGitHubAuthService authService) : base(authService) { }
 }
+
+/// <summary>Concrete handler for Jira-typed HttpClients.</summary>
+public sealed class JiraBearerTokenHandler : BearerTokenHandler
+{
+    public JiraBearerTokenHandler(Jira.IJiraAuthService authService) : base(authService) { }
+}

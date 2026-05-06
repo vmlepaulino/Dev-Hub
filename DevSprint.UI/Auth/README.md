@@ -13,21 +13,26 @@ from `Services/` so that:
 
 ```
 Auth/
-├── README.md                  ← you are here
-├── AuthTokens.cs              ← record: AccessToken, RefreshToken, ExpiresAtUtc, Scopes
-├── ITokenProvider.cs          ← what services depend on (GetAccessTokenAsync)
-├── BearerTokenHandler.cs      ← DelegatingHandler — injects "Authorization: Bearer <token>"
-├── EncryptedTokenStore.cs     ← DPAPI-encrypted persistence at %AppData%\TeamHub\tokens.dat
-└── GitHub/
-    ├── GitHubAuthOptions.cs   ← bound from configuration: ClientId, Scopes, PollInterval
-    ├── IGitHubAuthService.cs  ← SignInAsync / GetAccessTokenAsync / SignOutAsync / IsSignedIn
-    ├── GitHubAuthService.cs   ← orchestrates: cache → refresh → device-flow
-    └── GitHubDeviceFlowClient.cs   ← raw HTTP to /login/device/code & /login/oauth/access_token
+├── README.md                       ← you are here
+├── AuthTokens.cs                   ← record: AccessToken, RefreshToken, ExpiresAtUtc, Scopes, CloudId
+├── ITokenProvider.cs               ← what services depend on (GetAccessTokenAsync)
+├── BearerTokenHandler.cs           ← DelegatingHandler — injects "Authorization: Bearer <token>"
+│                                     plus GitHubBearerTokenHandler / JiraBearerTokenHandler subclasses
+├── EncryptedTokenStore.cs          ← DPAPI-encrypted persistence at %AppData%\TeamHub\tokens.dat
+├── PkceCodes.cs                    ← shared: verifier+challenge generator, state generator
+├── LoopbackHttpListener.cs         ← shared: one-shot HttpListener for OAuth redirects
+├── GitHub/
+│   ├── GitHubAuthOptions.cs        ← bound from "GitHub:OAuth": ClientId, Scopes, PollInterval
+│   ├── IGitHubAuthService.cs
+│   ├── GitHubAuthService.cs        ← cache → silent refresh → device-flow dialog
+│   └── GitHubDeviceFlowClient.cs   ← raw HTTP for /login/device/code, /login/oauth/access_token
+└── Jira/
+    ├── JiraAuthOptions.cs          ← bound from "Jira:OAuth": ClientId, ClientSecret, CallbackPort, Scopes
+    ├── IJiraAuthService.cs         ← + GetCloudIdAsync (cloudid is part of the auth state)
+    ├── JiraAuthService.cs          ← cache → silent refresh → loopback OAuth flow
+    ├── JiraOAuthClient.cs          ← raw HTTP for /authorize URL, /oauth/token, accessible-resources
+    └── JiraApiBaseUriHandler.cs    ← rewrites /rest/... → /ex/jira/{cloudId}/rest/...
 ```
-
-When Jira gets its turn, a sibling `Auth/Jira/` folder will appear with the same
-shape (`IJiraAuthService`, `JiraOAuthClient`, etc.) and reuse `EncryptedTokenStore`
-and `BearerTokenHandler`.
 
 ## How GitHub auth works (Device Flow)
 
@@ -50,7 +55,7 @@ and `BearerTokenHandler`.
 4. The new tokens are DPAPI-encrypted and saved to disk. Subsequent app
    launches skip the dialog as long as the refresh token still works.
 
-## How requests pick up the token
+## How GitHub requests pick up the token
 
 `Services/GitHubService` is registered with `IHttpClientFactory` and that
 client has `BearerTokenHandler` installed as a `DelegatingHandler`. On every
@@ -58,6 +63,39 @@ outgoing request the handler calls `IGitHubAuthService.GetAccessTokenAsync()`
 (which silently refreshes if needed) and stamps
 `Authorization: Bearer <access_token>` on the request. The service itself
 never sees a token.
+
+## How Jira auth works (OAuth 2.0 / 3LO with PKCE + loopback redirect)
+
+1. App starts. `App.OnStartup` calls `IJiraAuthService.EnsureSignedInAsync()`
+   after the GitHub one.
+2. The service reads `EncryptedTokenStore` for the Jira entry.
+   - If a non-expired access token is present and `CloudId` is populated → done.
+   - If expired but a refresh token exists → call `https://auth.atlassian.com/oauth/token`
+     with `grant_type=refresh_token` (Atlassian rotates refresh tokens — we persist
+     the new pair). Cloudid is preserved across refreshes.
+   - Otherwise → step 3.
+3. The service shows `Views/JiraSignInDialog`:
+   - Generates a PKCE verifier + challenge and a random `state` value.
+   - Starts `LoopbackHttpListener` on the configured `CallbackPort`.
+   - Opens the system browser to `https://auth.atlassian.com/authorize?...&code_challenge=...&prompt=consent`.
+   - Awaits the redirect to `http://127.0.0.1:<port>/callback?code=...&state=...`.
+   - Validates `state` matches; exchanges `code` for tokens at
+     `https://auth.atlassian.com/oauth/token` (with `client_secret` and
+     `code_verifier`).
+   - Calls `https://api.atlassian.com/oauth/token/accessible-resources` to look
+     up the cloudid for the configured Atlassian site (`Jira:BaseUrl`).
+4. The new tokens (with cloudid) are DPAPI-encrypted and saved.
+
+## How Jira requests pick up the token AND the cloudid
+
+`Services/JiraService` has TWO `DelegatingHandler`s installed by the factory:
+
+- `JiraBearerTokenHandler` — same pattern as GitHub: stamps `Authorization: Bearer ...`.
+- `JiraApiBaseUriHandler` — rewrites the outgoing URI from
+  `https://api.atlassian.com/rest/...` to `https://api.atlassian.com/ex/jira/{cloudid}/rest/...`.
+
+This lets `JiraService` keep using its existing relative URIs (`rest/api/3/search/jql`,
+`rest/agile/1.0/board/...`) without knowing about cloudid routing.
 
 ## Token storage
 

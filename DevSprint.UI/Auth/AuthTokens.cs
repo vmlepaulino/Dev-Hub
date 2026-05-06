@@ -24,6 +24,13 @@ public sealed class AuthTokens
     /// <summary>Space-separated list of OAuth scopes granted with the token.</summary>
     public string Scopes { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Atlassian Cloud ID — only meaningful for Jira. Empty for other platforms.
+    /// Captured during sign-in via /oauth/token/accessible-resources and used
+    /// to build the API base URL <c>https://api.atlassian.com/ex/jira/{cloudid}/</c>.
+    /// </summary>
+    public string CloudId { get; set; } = string.Empty;
+
     /// <summary>True when the access token is past its expiry (with a 1-min safety margin).</summary>
     public bool IsAccessTokenExpired =>
         AccessTokenExpiresAtUtc != DateTime.MaxValue

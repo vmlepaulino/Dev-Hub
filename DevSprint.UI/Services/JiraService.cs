@@ -23,18 +23,19 @@ public sealed class JiraService : IJiraService
     {
         _httpClient = httpClient;
 
-        var baseUrl = configuration["Jira:BaseUrl"]!.TrimEnd('/') + "/";
-        _httpClient.BaseAddress = new Uri(baseUrl);
-
-        var email = configuration["Jira:Email"]!;
-        var token = configuration["Jira:ApiToken"]!;
-        var credentials = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{email}:{token}"));
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", credentials);
+        // OAuth 2.0 (3LO) routes Jira API calls through api.atlassian.com.
+        // JiraApiBaseUriHandler rewrites paths to /ex/jira/{cloudId}/...
+        // JiraBearerTokenHandler attaches the Authorization header.
+        // The constructor must NOT touch DefaultRequestHeaders.Authorization.
+        _httpClient.BaseAddress = new Uri("https://api.atlassian.com/");
         _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+        // BrowseUrl is user-facing (e.g. https://your-site.atlassian.net/browse/PROJ-123)
+        // and stays on the configured site URL — that part of the API hasn't moved.
+        _baseUrl = configuration["Jira:BaseUrl"]!.TrimEnd('/') + "/";
 
         _boardId = configuration["Jira:BoardId"]!;
         _projectKey = configuration["Jira:ProjectKey"]!;
-        _baseUrl = baseUrl;
     }
 
 

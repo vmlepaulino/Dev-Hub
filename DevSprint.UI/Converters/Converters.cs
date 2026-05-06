@@ -8,8 +8,16 @@ namespace DevSprint.UI.Converters;
 
 public sealed class BoolToVisibilityConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
-        value is true ? Visibility.Visible : Visibility.Collapsed;
+    /// <summary>
+    /// Pass <c>ConverterParameter=Invert</c> to flip the result (i.e. show when false).
+    /// </summary>
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        var asBool = value is true;
+        if (parameter is string s && string.Equals(s, "Invert", StringComparison.OrdinalIgnoreCase))
+            asBool = !asBool;
+        return asBool ? Visibility.Visible : Visibility.Collapsed;
+    }
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
         throw new NotSupportedException();
