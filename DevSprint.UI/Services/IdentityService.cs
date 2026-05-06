@@ -35,7 +35,7 @@ public sealed class IdentityService : IIdentityService
         }
         catch
         {
-            // Corrupted file — start fresh
+            // Corrupted file â€” start fresh
         }
     }
 
@@ -49,6 +49,11 @@ public sealed class IdentityService : IIdentityService
 
     public TeamIdentity? GetByJiraAccountId(string accountId) =>
         _identities.FirstOrDefault(i => i.JiraAccountId.Equals(accountId, StringComparison.OrdinalIgnoreCase));
+
+    public TeamIdentity? GetByGitHubUsername(string githubUsername) =>
+        _identities.FirstOrDefault(i =>
+            !string.IsNullOrWhiteSpace(i.GitHubUsername) &&
+            i.GitHubUsername.Equals(githubUsername, StringComparison.OrdinalIgnoreCase));
 
     public TeamIdentity? GetCurrentUser() =>
         _identities.FirstOrDefault(i => i.IsCurrentUser);
@@ -69,6 +74,23 @@ public sealed class IdentityService : IIdentityService
             identity.IsCurrentUser = true;
             _identities.Add(identity);
         }
+    }
+
+    public void LinkGitHubUsername(TeamIdentity identity, string githubUsername)
+    {
+        if (string.IsNullOrWhiteSpace(identity.JiraAccountId) || string.IsNullOrWhiteSpace(githubUsername))
+            return;
+
+        var normalizedUsername = githubUsername.Trim();
+        foreach (var existingIdentity in _identities.Where(i =>
+            string.Equals(i.GitHubUsername, normalizedUsername, StringComparison.OrdinalIgnoreCase)))
+        {
+            existingIdentity.GitHubUsername = string.Empty;
+        }
+
+        var existing = GetByJiraAccountId(identity.JiraAccountId);
+        if (existing is not null)
+            existing.GitHubUsername = normalizedUsername;
     }
 
     public void MergeFromJira(IEnumerable<TeamIdentity> discovered)

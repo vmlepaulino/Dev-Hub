@@ -21,4 +21,9 @@
     </None>
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Ensure the Teams PNG is embedded as a WPF resource so pack URI works -->
+    <Resource Include="Assets\teams.png" />
+  </ItemGroup>
+
 </Project>

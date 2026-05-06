@@ -488,51 +488,118 @@ Title="Team Hub" Height="700" Width="1200">
                 <!-- Sidebar Tabs -->
                 <TabControl Grid.Row="2" Style="{StaticResource OutlookTabControl}">
                     <TabItem Style="{StaticResource OutlookTabItem}" Header="Team Members">
-                        <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,12,0,0">
-                            <ItemsControl ItemsSource="{Binding SidebarTeamMembers}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border Background="{StaticResource SubtleFillBrush}"
-                                                CornerRadius="6" Padding="12,10" Margin="0,0,0,6">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                </Grid.ColumnDefinitions>
-                                                <Border Grid.Column="0" Width="32" Height="32" CornerRadius="16"
-                                                        Background="{StaticResource AccentBrush}" Margin="0,0,12,0">
-                                                    <TextBlock Text="{Binding Name[0]}" FontSize="14"
-                                                               Foreground="White" FontWeight="SemiBold"
-                                                               HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                               FontFamily="{StaticResource ContentFont}"/>
-                                                </Border>
-                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                    <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold"
-                                                               Foreground="{StaticResource TextPrimaryBrush}"
-                                                               FontFamily="{StaticResource ContentFont}"
-                                                               TextTrimming="CharacterEllipsis"/>
-                                                    <TextBlock Text="{Binding Role}" FontSize="11"
-                                                               Foreground="{StaticResource TextSecondaryBrush}"
-                                                               FontFamily="{StaticResource ContentFont}"
-                                                               TextTrimming="CharacterEllipsis"/>
-                                                </StackPanel>
-                                                <!-- Teams chat button for sidebar team member -->
-                                                <Button Grid.Column="2"
-                                                        Style="{StaticResource TeamsIconButton}"
-                                                        Margin="12,0,0,0"
-                                                        VerticalAlignment="Center"
-                                                        Command="{Binding DataContext.OpenTeamsCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                        CommandParameter="{Binding}"
-                                                        ToolTip="Open in Teams">
-                                                    <Image Width="18" Height="18" Source="{StaticResource TeamsIconImage}" Stretch="Uniform" SnapsToDevicePixels="True"/>
-                                                </Button>
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </ScrollViewer>
+                        <DockPanel Margin="0,12,0,0">
+                            <Button DockPanel.Dock="Top"
+                                    Style="{StaticResource TeamsGroupButton}"
+                                    Command="{Binding OpenTeamsGroupCommand}"
+                                    ToolTip="Start a Teams group chat for this work item"
+                                    AutomationProperties.Name="Start Teams group chat">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                    <Image Width="18" Height="18" Source="{StaticResource TeamsIconImage}" Stretch="Uniform" SnapsToDevicePixels="True"/>
+                                    <TextBlock Text="Start group chat"
+                                               Margin="8,0,0,0"
+                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                               FontFamily="{StaticResource ContentFont}"
+                                               FontWeight="SemiBold"
+                                               VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Border DockPanel.Dock="Top"
+                                    Background="{StaticResource SubtleFillBrush}"
+                                    CornerRadius="6"
+                                    Padding="10"
+                                    Margin="0,8,0,0"
+                                    Visibility="{Binding IsGitHubLinkOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding GitHubMemberToLink.GitHubUsername, StringFormat='Link GitHub user: {0}'}"
+                                               FontSize="12"
+                                               FontWeight="SemiBold"
+                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                               FontFamily="{StaticResource ContentFont}"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <Grid Margin="0,8,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <ComboBox Grid.Column="0"
+                                                  ItemsSource="{Binding TeamMembers}"
+                                                  SelectedItem="{Binding SelectedIdentityForGitHubLink}"
+                                                  DisplayMemberPath="DisplayName"
+                                                  MinWidth="190"
+                                                  FontFamily="{StaticResource ContentFont}"
+                                                  FontSize="12"/>
+                                        <Button Grid.Column="1"
+                                                Content="Save"
+                                                Style="{StaticResource AccentButton}"
+                                                Command="{Binding LinkGitHubMemberCommand}"
+                                                Padding="10,5"
+                                                FontSize="12"
+                                                Margin="8,0,0,0"/>
+                                        <Button Grid.Column="2"
+                                                Content="Cancel"
+                                                Style="{StaticResource CompactLinkButton}"
+                                                Command="{Binding CancelGitHubLinkCommand}"
+                                                Margin="6,0,0,0"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,10,0,0">
+                                <ItemsControl ItemsSource="{Binding SidebarTeamMembers}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="{StaticResource SubtleFillBrush}"
+                                                    CornerRadius="6" Padding="12,10" Margin="0,0,0,6">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Border Grid.Column="0" Width="32" Height="32" CornerRadius="16"
+                                                            Background="{StaticResource AccentBrush}" Margin="0,0,12,0">
+                                                        <TextBlock Text="{Binding Name[0]}" FontSize="14"
+                                                                   Foreground="White" FontWeight="SemiBold"
+                                                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                   FontFamily="{StaticResource ContentFont}"/>
+                                                    </Border>
+                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold"
+                                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                                   FontFamily="{StaticResource ContentFont}"
+                                                                   TextTrimming="CharacterEllipsis"/>
+                                                        <TextBlock Text="{Binding Role}" FontSize="11"
+                                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                                   FontFamily="{StaticResource ContentFont}"
+                                                                   TextTrimming="CharacterEllipsis"/>
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="2"
+                                                                Orientation="Horizontal"
+                                                                VerticalAlignment="Center"
+                                                                Margin="12,0,0,0">
+                                                        <Button Content="Link"
+                                                                Style="{StaticResource CompactLinkButton}"
+                                                                Command="{Binding DataContext.StartGitHubLinkCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                CommandParameter="{Binding}"
+                                                                ToolTip="Link this GitHub username to a Jira teammate"
+                                                                Visibility="{Binding GitHubUsername, Converter={StaticResource StringToVisibilityConverter}}"/>
+                                                        <!-- Teams chat button for sidebar team member -->
+                                                        <Button Style="{StaticResource TeamsIconButton}"
+                                                                Margin="6,0,0,0"
+                                                                Command="{Binding DataContext.OpenTeamsCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                CommandParameter="{Binding}"
+                                                                ToolTip="Open in Teams">
+                                                            <Image Width="18" Height="18" Source="{StaticResource TeamsIconImage}" Stretch="Uniform" SnapsToDevicePixels="True"/>
+                                                        </Button>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </DockPanel>
                     </TabItem>
                     <TabItem Style="{StaticResource OutlookTabItem}" Header="Code">
                         <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,12,0,0">

@@ -166,6 +166,17 @@ public partial class MainViewModel : ObservableObject
     public ObservableCollection<TeamMember> SidebarTeamMembers { get; } = [];
     public ObservableCollection<BranchInfo> SidebarBranches { get; } = [];
 
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(LinkGitHubMemberCommand))]
+    private TeamMember? _gitHubMemberToLink;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(LinkGitHubMemberCommand))]
+    private TeamIdentity? _selectedIdentityForGitHubLink;
+
+    [ObservableProperty]
+    private bool _isGitHubLinkOpen;
+
     public ObservableCollection<JiraIssue> BacklogIssues { get; } = [];
     public ObservableCollection<JiraIssue> SprintIssues { get; } = [];
     public ObservableCollection<JiraIssue> AssignedIssues { get; } = [];
@@ -392,7 +403,7 @@ public partial class MainViewModel : ObservableObject
         SprintIssues.Clear();
         SprintName = sprint.Name;
         SprintDateRange = sprint.StartDate.HasValue && sprint.EndDate.HasValue
-            ? $"{sprint.StartDate:dd/MM/yyyy} — {sprint.EndDate:dd/MM/yyyy}"
+            ? $"{sprint.StartDate:dd/MM/yyyy} â€” {sprint.EndDate:dd/MM/yyyy}"
             : string.Empty;
 
         try
@@ -425,8 +436,8 @@ public partial class MainViewModel : ObservableObject
     {
         SprintTotalStoryPoints = SprintIssues.Sum(i => i.StoryPoints);
         var groups = SprintIssues.GroupBy(i => i.Status).OrderBy(g => g.Key).Select(g => $"{g.Key}: {g.Count()}");
-        SprintStateSummary = string.Join("  ·  ", groups);
-        SprintStatus = $"Showing {SprintIssues.Count}  ·  {SprintTotalStoryPoints} SP";
+        SprintStateSummary = string.Join("  Â·  ", groups);
+        SprintStatus = $"Showing {SprintIssues.Count}  Â·  {SprintTotalStoryPoints} SP";
     }
 
     [RelayCommand]
@@ -438,15 +449,21 @@ public partial class MainViewModel : ObservableObject
         IsSidebarLoading = true;
         SidebarTeamMembers.Clear();
         SidebarBranches.Clear();
+        IsGitHubLinkOpen = false;
+        GitHubMemberToLink = null;
+        SelectedIdentityForGitHubLink = null;
+        OpenTeamsGroupCommand.NotifyCanExecuteChanged();
 
         try
         {
             // Add Jira assignee as team member
             if (!string.IsNullOrEmpty(issue.Assignee))
             {
+                var assigneeIdentity = ResolveTeamIdentity(issue.Assignee);
                 SidebarTeamMembers.Add(new TeamMember
                 {
-                    Name = issue.Assignee,
+                    Name = assigneeIdentity?.DisplayName ?? issue.Assignee,
+                    Email = assigneeIdentity?.Email ?? string.Empty,
                     Role = "Assignee"
                 });
             }
@@ -459,7 +476,7 @@ public partial class MainViewModel : ObservableObject
 
             foreach (var member in contributorsTask.Result)
             {
-                if (!SidebarTeamMembers.Any(m => m.Name.Equals(member.Name, StringComparison.OrdinalIgnoreCase)))
+                if (!SidebarTeamMembers.Any(m => IsSameSidebarMember(m, member)))
                     SidebarTeamMembers.Add(member);
             }
 
@@ -468,11 +485,12 @@ public partial class MainViewModel : ObservableObject
         }
         catch
         {
-            // Silently handle — sidebar shows what we have
+            // Silently handle â€” sidebar shows what we have
         }
         finally
         {
             IsSidebarLoading = false;
+            OpenTeamsGroupCommand.NotifyCanExecuteChanged();
         }
     }
 
@@ -481,6 +499,10 @@ public partial class MainViewModel : ObservableObject
     {
         IsSidebarOpen = false;
         SelectedIssue = null;
+        IsGitHubLinkOpen = false;
+        GitHubMemberToLink = null;
+        SelectedIdentityForGitHubLink = null;
+        OpenTeamsGroupCommand.NotifyCanExecuteChanged();
     }
 
     [RelayCommand]
@@ -500,49 +522,211 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void StartGitHubLink(TeamMember? member)
+    {
+        if (member is null || string.IsNullOrWhiteSpace(member.GitHubUsername)) return;
+
+        GitHubMemberToLink = member;
+        SelectedIdentityForGitHubLink = ResolveTeamIdentity(member);
+        IsGitHubLinkOpen = true;
+    }
+
+    [RelayCommand]
+    private void CancelGitHubLink()
+    {
+        IsGitHubLinkOpen = false;
+        GitHubMemberToLink = null;
+        SelectedIdentityForGitHubLink = null;
+    }
+
+    private bool CanLinkGitHubMember() =>
+        GitHubMemberToLink is not null
+        && SelectedIdentityForGitHubLink is not null
+        && !string.IsNullOrWhiteSpace(GitHubMemberToLink.GitHubUsername);
+
+    [RelayCommand(CanExecute = nameof(CanLinkGitHubMember))]
+    private async Task LinkGitHubMemberAsync()
+    {
+        if (GitHubMemberToLink is null || SelectedIdentityForGitHubLink is null) return;
+
+        var sourceMember = GitHubMemberToLink;
+        var linkedIdentity = SelectedIdentityForGitHubLink;
+        _identityService.LinkGitHubUsername(linkedIdentity, sourceMember.GitHubUsername);
+        await _identityService.SaveAsync();
+
+        var index = SidebarTeamMembers.IndexOf(sourceMember);
+        if (index >= 0)
+        {
+            SidebarTeamMembers[index] = new TeamMember
+            {
+                Name = linkedIdentity.DisplayName,
+                Email = linkedIdentity.Email,
+                GitHubUsername = sourceMember.GitHubUsername,
+                AvatarUrl = !string.IsNullOrWhiteSpace(linkedIdentity.AvatarUrl)
+                    ? linkedIdentity.AvatarUrl
+                    : sourceMember.AvatarUrl,
+                Role = sourceMember.Role
+            };
+        }
+
+        ErrorMessage = string.Empty;
+        CancelGitHubLink();
+        OpenTeamsGroupCommand.NotifyCanExecuteChanged();
+    }
+
+    [RelayCommand]
     private void OpenTeams(object? memberObj)
     {
-        if (memberObj is null) return;
+        var participant = ResolveTeamsParticipant(memberObj);
+        if (string.IsNullOrWhiteSpace(participant)) return;
 
-        TeamIdentity? identity = null;
+        OpenTeamsChat([participant]);
+    }
 
-        if (memberObj is TeamIdentity ti)
+    private bool CanOpenTeamsGroup() =>
+        IsSidebarOpen
+        && SelectedIssue is not null
+        && SidebarTeamMembers.Count > 0;
+
+    [RelayCommand(CanExecute = nameof(CanOpenTeamsGroup))]
+    private void OpenTeamsGroup()
+    {
+        var participants = SidebarTeamMembers
+            .Select(ResolveTeamsParticipant)
+            .Where(p => !string.IsNullOrWhiteSpace(p))
+            .Select(p => p.Trim())
+            .Where(p => !IsCurrentUserParticipant(p))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (participants.Count == 0)
         {
-            identity = ti;
-        }
-        else if (memberObj is TeamMember tm)
-        {
-            // Try to resolve a TeamIdentity matching this TeamMember so we can get an email
-            identity = TeamMembers.FirstOrDefault(t =>
-                !string.IsNullOrWhiteSpace(t.Email) && (
-                    string.Equals(t.DisplayName, tm.Name, StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(t.JiraDisplayName, tm.Name, StringComparison.OrdinalIgnoreCase)
-                ));
-        }
-
-        string target;
-        if (identity is not null && !string.IsNullOrWhiteSpace(identity.Email))
-        {
-            var emailEscaped = WebUtility.UrlEncode(identity.Email.Trim());
-            target = $"https://teams.microsoft.com/l/chat/0/0?users={emailEscaped}";
-        }
-        else
-        {
-            // Fallback to using the provided object's name/display value
-            string identifier = memberObj switch
-            {
-                TeamIdentity t => t.DisplayName,
-                TeamMember m => m.Name,
-                _ => memberObj.ToString() ?? string.Empty
-            };
-
-            identifier = identifier.Trim();
-            if (string.IsNullOrWhiteSpace(identifier)) return;
-
-            var idEsc = WebUtility.UrlEncode(identifier);
-            target = $"https://teams.microsoft.com/l/chat/0/0?users={idEsc}";
+            ErrorMessage = "No Teams addresses were found for the people on this work item.";
+            return;
         }
 
+        var issue = SelectedIssue;
+        ErrorMessage = string.Empty;
+        OpenTeamsChat(participants, CreateTeamsTopic(issue), CreateTeamsMessage(issue));
+    }
+
+    private string ResolveTeamsParticipant(object? memberObj)
+    {
+        if (memberObj is null) return string.Empty;
+        if (memberObj is string value) return NormalizeTeamsAddress(value);
+
+        if (memberObj is TeamMember member && !string.IsNullOrWhiteSpace(member.Email))
+            return NormalizeTeamsAddress(member.Email);
+
+        var identity = memberObj switch
+        {
+            TeamIdentity teamIdentity => teamIdentity,
+            TeamMember teamMember => ResolveTeamIdentity(teamMember),
+            _ => null
+        };
+
+        return identity is not null
+            ? NormalizeTeamsAddress(identity.Email)
+            : string.Empty;
+    }
+
+    private static string NormalizeTeamsAddress(string value)
+    {
+        var trimmed = value.Trim();
+        return IsTeamsAddress(trimmed) ? trimmed : string.Empty;
+    }
+
+    private static bool IsTeamsAddress(string value) =>
+        !string.IsNullOrWhiteSpace(value)
+        && value.Contains('@')
+        && !value.Any(char.IsWhiteSpace)
+        && !value.Contains(',')
+        && !value.Contains(';');
+
+    private TeamIdentity? ResolveTeamIdentity(TeamMember member) =>
+        ResolveTeamIdentity(member.GitHubUsername, allowGitHubUsername: true)
+        ?? (!string.IsNullOrWhiteSpace(member.Email)
+            ? ResolveTeamIdentity(member.Email) ?? ResolveTeamIdentity(member.Name)
+            : ResolveTeamIdentity(member.Name));
+
+    private TeamIdentity? ResolveTeamIdentity(string nameOrEmail, bool allowGitHubUsername = false)
+    {
+        if (string.IsNullOrWhiteSpace(nameOrEmail)) return null;
+
+        if (allowGitHubUsername)
+        {
+            var identity = _identityService.GetByGitHubUsername(nameOrEmail);
+            if (identity is not null) return identity;
+        }
+
+        return TeamMembers.FirstOrDefault(t =>
+            string.Equals(t.Email, nameOrEmail, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(t.DisplayName, nameOrEmail, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(t.JiraDisplayName, nameOrEmail, StringComparison.OrdinalIgnoreCase)
+            || (allowGitHubUsername && string.Equals(t.GitHubUsername, nameOrEmail, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    private static bool IsSameSidebarMember(TeamMember left, TeamMember right) =>
+        MatchesKnownIdentityValue(left.Email, right.Email)
+        || MatchesKnownIdentityValue(left.GitHubUsername, right.GitHubUsername)
+        || string.Equals(left.Name, right.Name, StringComparison.OrdinalIgnoreCase);
+
+    private bool IsCurrentUserParticipant(string participant)
+    {
+        var currentUser = _identityService.GetCurrentUser();
+        if (currentUser is null) return false;
+
+        return MatchesKnownIdentityValue(participant, currentUser.Email)
+            || MatchesKnownIdentityValue(participant, currentUser.DisplayName)
+            || MatchesKnownIdentityValue(participant, currentUser.JiraDisplayName);
+    }
+
+    private static bool MatchesKnownIdentityValue(string participant, string value) =>
+        !string.IsNullOrWhiteSpace(value)
+        && string.Equals(participant, value, StringComparison.OrdinalIgnoreCase);
+
+    private static string CreateTeamsTopic(JiraIssue? issue)
+    {
+        if (issue is null || string.IsNullOrWhiteSpace(issue.Key))
+            return "Work item collaboration";
+
+        var topic = string.IsNullOrWhiteSpace(issue.Summary)
+            ? issue.Key
+            : $"{issue.Key} - {issue.Summary}";
+
+        return topic.Length <= 90 ? topic : topic[..90];
+    }
+
+    private static string CreateTeamsMessage(JiraIssue? issue)
+    {
+        if (issue is null || string.IsNullOrWhiteSpace(issue.Key))
+            return "Hi team, starting a collaboration chat for this work item.";
+
+        return $"Hi team, starting a collaboration chat for {issue.Key}: {issue.Summary}{Environment.NewLine}{issue.BrowseUrl}";
+    }
+
+    private static void OpenTeamsChat(IEnumerable<string> participants, string? topicName = null, string? message = null)
+    {
+        var users = participants
+            .Where(p => !string.IsNullOrWhiteSpace(p))
+            .Select(p => p.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (users.Count == 0) return;
+
+        var query = new List<string>
+        {
+            $"users={string.Join(",", users.Select(WebUtility.UrlEncode))}"
+        };
+
+        if (!string.IsNullOrWhiteSpace(topicName))
+            query.Add($"topicName={WebUtility.UrlEncode(topicName)}");
+
+        if (!string.IsNullOrWhiteSpace(message))
+            query.Add($"message={WebUtility.UrlEncode(message)}");
+
+        var target = $"https://teams.microsoft.com/l/chat/0/0?{string.Join("&", query)}";
         try
         {
             var psi = new ProcessStartInfo(target) { UseShellExecute = true };

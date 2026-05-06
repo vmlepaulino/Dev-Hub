@@ -12,6 +12,9 @@ public sealed class GitHubService : IGitHubService
     private readonly string _username;
     private readonly string _organization;
     private readonly string[] _repositories;
+    private readonly Dictionary<string, GitHubUserProfile> _userProfileCache = new(StringComparer.OrdinalIgnoreCase);
+
+    private sealed record GitHubUserProfile(string DisplayName, string Email, string AvatarUrl);
 
     public GitHubService(HttpClient httpClient, IConfiguration configuration)
     {
@@ -399,12 +402,7 @@ public sealed class GitHubService : IGitHubService
                             var login = GetString(user, "login");
                             if (!string.IsNullOrEmpty(login) && !members.ContainsKey(login))
                             {
-                                members[login] = new TeamMember
-                                {
-                                    Name = login,
-                                    AvatarUrl = GetString(user, "avatar_url"),
-                                    Role = "Contributing"
-                                };
+                                members[login] = await CreateTeamMemberFromGitHubUserAsync(user, "Contributing", cancellationToken);
                             }
                         }
 
@@ -416,12 +414,7 @@ public sealed class GitHubService : IGitHubService
                                 var login = GetString(assignee, "login");
                                 if (!string.IsNullOrEmpty(login) && !members.ContainsKey(login))
                                 {
-                                    members[login] = new TeamMember
-                                    {
-                                        Name = login,
-                                        AvatarUrl = GetString(assignee, "avatar_url"),
-                                        Role = "Reviewer"
-                                    };
+                                    members[login] = await CreateTeamMemberFromGitHubUserAsync(assignee, "Reviewer", cancellationToken);
                                 }
                             }
                         }
@@ -434,12 +427,7 @@ public sealed class GitHubService : IGitHubService
                                 var login = GetString(reviewer, "login");
                                 if (!string.IsNullOrEmpty(login) && !members.ContainsKey(login))
                                 {
-                                    members[login] = new TeamMember
-                                    {
-                                        Name = login,
-                                        AvatarUrl = GetString(reviewer, "avatar_url"),
-                                        Role = "Reviewer"
-                                    };
+                                    members[login] = await CreateTeamMemberFromGitHubUserAsync(reviewer, "Reviewer", cancellationToken);
                                 }
                             }
                         }
@@ -453,5 +441,59 @@ public sealed class GitHubService : IGitHubService
         }
 
         return members.Values.ToList();
+    }
+
+    private async Task<TeamMember> CreateTeamMemberFromGitHubUserAsync(JsonElement user, string role, CancellationToken cancellationToken)
+    {
+        var login = GetString(user, "login");
+        var fallbackAvatarUrl = GetString(user, "avatar_url");
+        var profile = await GetGitHubUserProfileAsync(login, cancellationToken);
+
+        return new TeamMember
+        {
+            Name = !string.IsNullOrWhiteSpace(profile.DisplayName) ? profile.DisplayName : login,
+            Email = profile.Email,
+            GitHubUsername = login,
+            AvatarUrl = !string.IsNullOrWhiteSpace(profile.AvatarUrl) ? profile.AvatarUrl : fallbackAvatarUrl,
+            Role = role
+        };
+    }
+
+    private async Task<GitHubUserProfile> GetGitHubUserProfileAsync(string login, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(login))
+            return new GitHubUserProfile(string.Empty, string.Empty, string.Empty);
+
+        if (_userProfileCache.TryGetValue(login, out var cached))
+            return cached;
+
+        GitHubUserProfile profile;
+        try
+        {
+            var url = $"users/{Uri.EscapeDataString(login)}";
+            using var response = await _httpClient.GetAsync(url, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                profile = new GitHubUserProfile(string.Empty, string.Empty, string.Empty);
+            }
+            else
+            {
+                var json = await response.Content.ReadAsStringAsync(cancellationToken);
+                using var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
+
+                profile = new GitHubUserProfile(
+                    GetString(root, "name"),
+                    GetString(root, "email"),
+                    GetString(root, "avatar_url"));
+            }
+        }
+        catch
+        {
+            profile = new GitHubUserProfile(string.Empty, string.Empty, string.Empty);
+        }
+
+        _userProfileCache[login] = profile;
+        return profile;
     }
 }
