@@ -11,6 +11,39 @@ Style="{StaticResource FluentWindow}"
 Title="Team Hub" Height="700" Width="1200">
 
     <Window.Resources>
+        <!-- Teams icon (vector, stylized official mark) -->
+        <DrawingImage x:Key="TeamsIconImage">
+            <DrawingImage.Drawing>
+                <DrawingGroup>
+                    <!-- main purple circle -->
+                    <GeometryDrawing Brush="#6264A7">
+                        <GeometryDrawing.Geometry>
+                            <EllipseGeometry Center="10,10" RadiusX="9" RadiusY="9"/>
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+
+                    <!-- white 'T' glyph -->
+                    <GeometryDrawing Brush="White">
+                        <GeometryDrawing.Geometry>
+                            <GeometryGroup>
+                                <RectangleGeometry Rect="6,6,8,3" RadiusX="1" RadiusY="1"/>
+                                <RectangleGeometry Rect="9.5,9,1,6" RadiusX="0.8" RadiusY="0.8"/>
+                            </GeometryGroup>
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+
+                    <!-- small decorative circles to mimic Teams cluster -->
+                    <GeometryDrawing Brush="#4B4F8E">
+                        <GeometryDrawing.Geometry>
+                            <GeometryGroup>
+                                <EllipseGeometry Center="14.5,6.5" RadiusX="2" RadiusY="2"/>
+                                <EllipseGeometry Center="15.5,12.5" RadiusX="1.4" RadiusY="1.4"/>
+                            </GeometryGroup>
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+                </DrawingGroup>
+            </DrawingImage.Drawing>
+        </DrawingImage>
         <DataTemplate x:Key="JiraIssueTemplate">
             <Border Style="{StaticResource CardBorder}" Margin="0,0,0,6"
                     Padding="0" ClipToBounds="True" Cursor="Hand">
@@ -367,26 +400,45 @@ Title="Team Hub" Height="700" Width="1200">
                                 <DataTemplate>
                                     <Border Background="{StaticResource SubtleFillBrush}"
                                             CornerRadius="6" Padding="14,12" Margin="0,0,0,6">
-                                        <StackPanel Orientation="Horizontal">
-                                            <Border Width="36" Height="36" CornerRadius="18"
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Border Grid.Column="0" Width="36" Height="36" CornerRadius="18"
                                                     Background="{StaticResource AccentBrush}" Margin="0,0,14,0">
                                                 <TextBlock Text="{Binding DisplayName[0]}" FontSize="15"
                                                            Foreground="White" FontWeight="SemiBold"
                                                            HorizontalAlignment="Center" VerticalAlignment="Center"
                                                            FontFamily="{StaticResource ContentFont}"/>
                                             </Border>
-                                            <StackPanel VerticalAlignment="Center">
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                                 <TextBlock Text="{Binding DisplayName}" FontSize="13" FontWeight="SemiBold"
                                                            Foreground="{StaticResource TextPrimaryBrush}"
-                                                           FontFamily="{StaticResource ContentFont}"/>
+                                                           FontFamily="{StaticResource ContentFont}"
+                                                           TextTrimming="CharacterEllipsis"/>
                                                 <TextBlock Text="{Binding Email}" FontSize="11"
                                                            Foreground="{StaticResource AccentBrush}"
-                                                           FontFamily="{StaticResource ContentFont}"/>
+                                                           FontFamily="{StaticResource ContentFont}"
+                                                           TextTrimming="CharacterEllipsis"/>
                                                 <TextBlock Text="{Binding JiraDisplayName}" FontSize="11"
                                                            Foreground="{StaticResource TextSecondaryBrush}"
-                                                           FontFamily="{StaticResource ContentFont}"/>
+                                                           FontFamily="{StaticResource ContentFont}"
+                                                           TextTrimming="CharacterEllipsis"/>
                                             </StackPanel>
-                                        </StackPanel>
+
+                                            <!-- Teams chat button -->
+                                            <Button Grid.Column="2"
+                                                    Style="{StaticResource TeamsIconButton}"
+                                                    Margin="12,0,0,0"
+                                                    VerticalAlignment="Center"
+                                                    Command="{Binding DataContext.OpenTeamsCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding}"
+                                                    ToolTip="Open in Teams">
+                                                <Image Width="18" Height="18" Source="{StaticResource TeamsIconImage}" Stretch="Uniform" SnapsToDevicePixels="True"/>
+                                            </Button>
+                                        </Grid>
                                     </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
@@ -442,23 +494,40 @@ Title="Team Hub" Height="700" Width="1200">
                                     <DataTemplate>
                                         <Border Background="{StaticResource SubtleFillBrush}"
                                                 CornerRadius="6" Padding="12,10" Margin="0,0,0,6">
-                                            <StackPanel Orientation="Horizontal">
-                                                <Border Width="32" Height="32" CornerRadius="16"
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Border Grid.Column="0" Width="32" Height="32" CornerRadius="16"
                                                         Background="{StaticResource AccentBrush}" Margin="0,0,12,0">
                                                     <TextBlock Text="{Binding Name[0]}" FontSize="14"
                                                                Foreground="White" FontWeight="SemiBold"
                                                                HorizontalAlignment="Center" VerticalAlignment="Center"
                                                                FontFamily="{StaticResource ContentFont}"/>
                                                 </Border>
-                                                <StackPanel VerticalAlignment="Center">
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                                     <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold"
                                                                Foreground="{StaticResource TextPrimaryBrush}"
-                                                               FontFamily="{StaticResource ContentFont}"/>
+                                                               FontFamily="{StaticResource ContentFont}"
+                                                               TextTrimming="CharacterEllipsis"/>
                                                     <TextBlock Text="{Binding Role}" FontSize="11"
                                                                Foreground="{StaticResource TextSecondaryBrush}"
-                                                               FontFamily="{StaticResource ContentFont}"/>
+                                                               FontFamily="{StaticResource ContentFont}"
+                                                               TextTrimming="CharacterEllipsis"/>
                                                 </StackPanel>
-                                            </StackPanel>
+                                                <!-- Teams chat button for sidebar team member -->
+                                                <Button Grid.Column="2"
+                                                        Style="{StaticResource TeamsIconButton}"
+                                                        Margin="12,0,0,0"
+                                                        VerticalAlignment="Center"
+                                                        Command="{Binding DataContext.OpenTeamsCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}"
+                                                        ToolTip="Open in Teams">
+                                                    <Image Width="18" Height="18" Source="{StaticResource TeamsIconImage}" Stretch="Uniform" SnapsToDevicePixels="True"/>
+                                                </Button>
+                                            </Grid>
                                         </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>

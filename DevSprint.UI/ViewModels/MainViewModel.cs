@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
+using System.Net;
 using System.Windows.Data;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -495,5 +497,60 @@ public partial class MainViewModel : ObservableObject
             }
         }
         IsFirstRun = false;
+    }
+
+    [RelayCommand]
+    private void OpenTeams(object? memberObj)
+    {
+        if (memberObj is null) return;
+
+        TeamIdentity? identity = null;
+
+        if (memberObj is TeamIdentity ti)
+        {
+            identity = ti;
+        }
+        else if (memberObj is TeamMember tm)
+        {
+            // Try to resolve a TeamIdentity matching this TeamMember so we can get an email
+            identity = TeamMembers.FirstOrDefault(t =>
+                !string.IsNullOrWhiteSpace(t.Email) && (
+                    string.Equals(t.DisplayName, tm.Name, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(t.JiraDisplayName, tm.Name, StringComparison.OrdinalIgnoreCase)
+                ));
+        }
+
+        string target;
+        if (identity is not null && !string.IsNullOrWhiteSpace(identity.Email))
+        {
+            var emailEscaped = WebUtility.UrlEncode(identity.Email.Trim());
+            target = $"https://teams.microsoft.com/l/chat/0/0?users={emailEscaped}";
+        }
+        else
+        {
+            // Fallback to using the provided object's name/display value
+            string identifier = memberObj switch
+            {
+                TeamIdentity t => t.DisplayName,
+                TeamMember m => m.Name,
+                _ => memberObj.ToString() ?? string.Empty
+            };
+
+            identifier = identifier.Trim();
+            if (string.IsNullOrWhiteSpace(identifier)) return;
+
+            var idEsc = WebUtility.UrlEncode(identifier);
+            target = $"https://teams.microsoft.com/l/chat/0/0?users={idEsc}";
+        }
+
+        try
+        {
+            var psi = new ProcessStartInfo(target) { UseShellExecute = true };
+            Process.Start(psi);
+        }
+        catch
+        {
+            // best-effort; ignore errors
+        }
     }
 }
