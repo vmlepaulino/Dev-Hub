@@ -1,10 +1,10 @@
-# DevSprint
+# Dev-Hub
 
 > A Windows desktop companion that brings together your team's work across Jira,
 > GitHub, and Confluence — designed to help the right people connect on the right
 > work item, at the right time.
 
-DevSprint is an open lab project exploring how a single, focused desktop app can
+Dev-Hub is an open lab project exploring how a single, focused desktop app can
 unify the **work** (Jira backlog and sprints), the **code** (GitHub branches and
 pull requests), and the **knowledge** (Confluence pages) that already exist
 across your organisation — and surface the **people** behind each of those
