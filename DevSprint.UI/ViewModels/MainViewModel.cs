@@ -178,6 +178,52 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string _filterText = string.Empty;
 
+    /// <summary>
+    /// Sprint-tab-specific search box content. Filter activates only when ≥3
+    /// characters are entered, to avoid noisy matches on short keystrokes.
+    /// </summary>
+    [ObservableProperty]
+    private string _sprintFilterText = string.Empty;
+
+    partial void OnSprintFilterTextChanged(string value) => SprintView.Refresh();
+
+    /// <summary>Backlog-tab-specific text search (≥3 chars). Same pattern as sprint.</summary>
+    [ObservableProperty]
+    private string _backlogFilterText = string.Empty;
+
+    partial void OnBacklogFilterTextChanged(string value) => BacklogView.Refresh();
+
+    /// <summary>
+    /// Active state filter on the Backlog tab. Empty = no state filter.
+    /// "Refined" = status contains "refin" or "ready". "InAnalysis" = status
+    /// contains "analy" or "review". Set via <see cref="SetBacklogStateFilterCommand"/>.
+    /// </summary>
+    [ObservableProperty]
+    private string _backlogStateFilter = string.Empty;
+
+    partial void OnBacklogStateFilterChanged(string value) => BacklogView.Refresh();
+
+    /// <summary>
+    /// Click handler for the Backlog state badges. Empty parameter (the "Total"
+    /// badge) always clears the filter. A non-empty parameter toggles — re-clicking
+    /// the active filter clears it.
+    /// </summary>
+    [RelayCommand]
+    private void SetBacklogStateFilter(string? state)
+    {
+        var requested = state ?? string.Empty;
+
+        if (string.IsNullOrEmpty(requested))
+        {
+            BacklogStateFilter = string.Empty;
+            return;
+        }
+
+        BacklogStateFilter = string.Equals(BacklogStateFilter, requested, StringComparison.OrdinalIgnoreCase)
+            ? string.Empty
+            : requested;
+    }
+
     [RelayCommand]
     private async Task SearchAsync()
     {
@@ -223,6 +269,14 @@ public partial class MainViewModel : ObservableObject
     public ObservableCollection<TeamMember> SidebarTeamMembers { get; } = [];
     public ObservableCollection<BranchInfo> SidebarBranches { get; } = [];
     public ObservableCollection<ConfluencePage> SidebarConfluencePages { get; } = [];
+
+    /// <summary>
+    /// De-duplicated list of every person related to the selected issue, drawn
+    /// from <see cref="SidebarTeamMembers"/> and <see cref="SidebarConfluencePages"/>.
+    /// Each entry carries one or more tags ("Team member", "Knowledge contributor")
+    /// and a checkbox bound to <see cref="SidebarPersonViewModel.IsSelectedForChat"/>.
+    /// </summary>
+    public ObservableCollection<SidebarPersonViewModel> SidebarPeople { get; } = [];
 
     [ObservableProperty]
     private string _sidebarConfluenceStatus = string.Empty;
@@ -275,8 +329,8 @@ public partial class MainViewModel : ObservableObject
         AssignedView = CollectionViewSource.GetDefaultView(AssignedIssues);
         ContributingView = CollectionViewSource.GetDefaultView(ContributingIssues);
 
-        BacklogView.Filter = IssueMatchesFilter;
-        SprintView.Filter = IssueMatchesFilter;
+        BacklogView.Filter = BacklogIssueMatchesFilter;
+        SprintView.Filter = SprintIssueMatchesFilter;
         AssignedView.Filter = IssueMatchesFilter;
         ContributingView.Filter = IssueMatchesFilter;
     }
@@ -288,6 +342,77 @@ public partial class MainViewModel : ObservableObject
 
         return issue.Key.Contains(FilterText, StringComparison.OrdinalIgnoreCase)
             || issue.Summary.Contains(FilterText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Backlog-tab filter. Combines the global header search, the backlog-tab
+    /// text search (≥3 chars), and the active state filter (Refined / InAnalysis).
+    /// All three are AND-ed; an issue must satisfy every active filter to show up.
+    /// </summary>
+    private bool BacklogIssueMatchesFilter(object obj)
+    {
+        if (obj is not JiraIssue issue) return false;
+
+        // Global header search.
+        if (!string.IsNullOrWhiteSpace(FilterText))
+        {
+            if (!issue.Key.Contains(FilterText, StringComparison.OrdinalIgnoreCase)
+                && !issue.Summary.Contains(FilterText, StringComparison.OrdinalIgnoreCase))
+                return false;
+        }
+
+        // Backlog-tab text search (3+ chars).
+        var query = (BacklogFilterText ?? string.Empty).Trim();
+        if (query.Length >= 3)
+        {
+            if (!issue.Key.Contains(query, StringComparison.OrdinalIgnoreCase)
+                && !issue.Summary.Contains(query, StringComparison.OrdinalIgnoreCase))
+                return false;
+        }
+
+        // State filter — same matching rules as the badge counts in UpdateBacklogStats.
+        if (!string.IsNullOrEmpty(BacklogStateFilter))
+        {
+            if (string.Equals(BacklogStateFilter, "Refined", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!issue.Status.Contains("refin", StringComparison.OrdinalIgnoreCase)
+                    && !issue.Status.Contains("ready", StringComparison.OrdinalIgnoreCase))
+                    return false;
+            }
+            else if (string.Equals(BacklogStateFilter, "InAnalysis", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!issue.Status.Contains("analy", StringComparison.OrdinalIgnoreCase)
+                    && !issue.Status.Contains("review", StringComparison.OrdinalIgnoreCase))
+                    return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Sprint-tab filter. Combines the global header search (<see cref="FilterText"/>)
+    /// with the sprint-tab-only search (<see cref="SprintFilterText"/>), AND-ed.
+    /// The sprint-only search activates at 3+ characters so short prefixes don't
+    /// clear the list while the user is still typing.
+    /// </summary>
+    private bool SprintIssueMatchesFilter(object obj)
+    {
+        if (obj is not JiraIssue issue) return false;
+
+        // Global header search still applies (when used).
+        if (!string.IsNullOrWhiteSpace(FilterText))
+        {
+            if (!issue.Key.Contains(FilterText, StringComparison.OrdinalIgnoreCase)
+                && !issue.Summary.Contains(FilterText, StringComparison.OrdinalIgnoreCase))
+                return false;
+        }
+
+        var sprintQuery = (SprintFilterText ?? string.Empty).Trim();
+        if (sprintQuery.Length < 3) return true;
+
+        return issue.Key.Contains(sprintQuery, StringComparison.OrdinalIgnoreCase)
+            || issue.Summary.Contains(sprintQuery, StringComparison.OrdinalIgnoreCase);
     }
 
     partial void OnFilterTextChanged(string value)
@@ -525,6 +650,7 @@ public partial class MainViewModel : ObservableObject
         IsSidebarOpen = true;
         IsSidebarLoading = true;
         SidebarTeamMembers.Clear();
+        SidebarPeople.Clear();
         SidebarBranches.Clear();
         SidebarConfluencePages.Clear();
         SidebarConfluenceStatus = string.Empty;
@@ -569,6 +695,9 @@ public partial class MainViewModel : ObservableObject
             SidebarConfluenceStatus = SidebarConfluencePages.Count == 0
                 ? "No Confluence pages mention this issue."
                 : $"{SidebarConfluencePages.Count} page{(SidebarConfluencePages.Count == 1 ? "" : "s")} mention this issue.";
+
+            // Merge team members + Confluence contributors into the unified People list.
+            BuildSidebarPeople();
         }
         catch
         {
@@ -609,12 +738,24 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void StartGitHubLink(TeamMember? member)
+    private void StartGitHubLink(SidebarPersonViewModel? person)
     {
-        if (member is null || string.IsNullOrWhiteSpace(member.GitHubUsername)) return;
+        if (person is null || string.IsNullOrWhiteSpace(person.GitHubUsername)) return;
 
-        GitHubMemberToLink = member;
-        SelectedIdentityForGitHubLink = ResolveTeamIdentity(member);
+        // The link command was originally written against TeamMember, so synthesise one
+        // if this person came from a source that didn't carry a TeamMember (rare —
+        // Confluence contributors with a GitHub username, for instance).
+        var teamMember = person.UnderlyingTeamMember ?? new TeamMember
+        {
+            Name = person.DisplayName,
+            Email = person.Email,
+            GitHubUsername = person.GitHubUsername,
+            AvatarUrl = person.AvatarUrl,
+            Role = "Contributor"
+        };
+
+        GitHubMemberToLink = teamMember;
+        SelectedIdentityForGitHubLink = ResolveTeamIdentity(teamMember);
         IsGitHubLinkOpen = true;
     }
 
@@ -641,6 +782,7 @@ public partial class MainViewModel : ObservableObject
         _identityService.LinkGitHubUsername(linkedIdentity, sourceMember.GitHubUsername);
         await _identityService.SaveAsync();
 
+        // Update SidebarTeamMembers (still used internally for source-of-truth data).
         var index = SidebarTeamMembers.IndexOf(sourceMember);
         if (index >= 0)
         {
@@ -655,6 +797,10 @@ public partial class MainViewModel : ObservableObject
                 Role = sourceMember.Role
             };
         }
+
+        // Rebuild People — re-running the merge now picks up the new identity link
+        // (e.g. the GitHub-only entry collapses into the Atlassian-known entry).
+        BuildSidebarPeople();
 
         ErrorMessage = string.Empty;
         CancelGitHubLink();
@@ -673,12 +819,13 @@ public partial class MainViewModel : ObservableObject
     private bool CanOpenTeamsGroup() =>
         IsSidebarOpen
         && SelectedIssue is not null
-        && SidebarTeamMembers.Count > 0;
+        && SidebarPeople.Any(p => p.IsSelectedForChat);
 
     [RelayCommand(CanExecute = nameof(CanOpenTeamsGroup))]
     private void OpenTeamsGroup()
     {
-        var participants = SidebarTeamMembers
+        var participants = SidebarPeople
+            .Where(p => p.IsSelectedForChat)
             .Select(ResolveTeamsParticipant)
             .Where(p => !string.IsNullOrWhiteSpace(p))
             .Select(p => p.Trim())
@@ -688,7 +835,7 @@ public partial class MainViewModel : ObservableObject
 
         if (participants.Count == 0)
         {
-            ErrorMessage = "No Teams addresses were found for the people on this work item.";
+            ErrorMessage = "Selected people don't have email addresses on file. Use the Link button to associate them with a Jira teammate.";
             return;
         }
 
@@ -701,6 +848,25 @@ public partial class MainViewModel : ObservableObject
     {
         if (memberObj is null) return string.Empty;
         if (memberObj is string value) return NormalizeTeamsAddress(value);
+
+        // SidebarPersonViewModel is the unified row type used by the People tab.
+        if (memberObj is SidebarPersonViewModel person)
+        {
+            if (!string.IsNullOrWhiteSpace(person.Email))
+                return NormalizeTeamsAddress(person.Email);
+
+            // Fall back to TeamIdentity lookup by accountId / GitHubUsername / display name.
+            var byAccount = !string.IsNullOrEmpty(person.AtlassianAccountId)
+                ? _identityService.GetByJiraAccountId(person.AtlassianAccountId)
+                : null;
+            if (byAccount is not null && !string.IsNullOrWhiteSpace(byAccount.Email))
+                return NormalizeTeamsAddress(byAccount.Email);
+
+            if (person.UnderlyingTeamMember is not null)
+                return ResolveTeamsParticipant(person.UnderlyingTeamMember);
+
+            return string.Empty;
+        }
 
         if (memberObj is TeamMember member && !string.IsNullOrWhiteSpace(member.Email))
             return NormalizeTeamsAddress(member.Email);
@@ -757,6 +923,90 @@ public partial class MainViewModel : ObservableObject
         MatchesKnownIdentityValue(left.Email, right.Email)
         || MatchesKnownIdentityValue(left.GitHubUsername, right.GitHubUsername)
         || string.Equals(left.Name, right.Name, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Merges <see cref="SidebarTeamMembers"/> and the Confluence page contributors
+    /// (creator + last editor of each <see cref="SidebarConfluencePages"/> entry)
+    /// into the de-duplicated <see cref="SidebarPeople"/> list. Each person is
+    /// tagged with one or more roles describing why they appear.
+    /// </summary>
+    private void BuildSidebarPeople()
+    {
+        // Detach old subscriptions before clearing to avoid leaks.
+        foreach (var p in SidebarPeople)
+            p.PropertyChanged -= OnSidebarPersonChanged;
+
+        SidebarPeople.Clear();
+
+        // 1. Seed with team members (Jira assignee + GitHub PR contributors/reviewers).
+        foreach (var member in SidebarTeamMembers)
+        {
+            var atlassianAccountId = ResolveTeamIdentity(member)?.JiraAccountId ?? string.Empty;
+            var person = new SidebarPersonViewModel(
+                displayName: member.Name,
+                email: member.Email,
+                avatarUrl: member.AvatarUrl,
+                atlassianAccountId: atlassianAccountId,
+                gitHubUsername: member.GitHubUsername,
+                underlyingTeamMember: member);
+
+            person.AddTag(SidebarPersonViewModel.TagTeamMember);
+            SidebarPeople.Add(person);
+        }
+
+        // 2. Layer in Confluence contributors. If we already have the same person,
+        //    just append the "Knowledge contributor" tag; otherwise add a new entry.
+        foreach (var page in SidebarConfluencePages)
+        {
+            MergeConfluenceContributor(page.Creator);
+            MergeConfluenceContributor(page.LastEditor);
+        }
+
+        // Re-attach so toggling IsSelectedForChat refreshes the chat command.
+        foreach (var p in SidebarPeople)
+            p.PropertyChanged += OnSidebarPersonChanged;
+
+        OpenTeamsGroupCommand.NotifyCanExecuteChanged();
+    }
+
+    private void OnSidebarPersonChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(SidebarPersonViewModel.IsSelectedForChat))
+            OpenTeamsGroupCommand.NotifyCanExecuteChanged();
+    }
+
+    private void MergeConfluenceContributor(ConfluenceContributor? contributor)
+    {
+        if (contributor is null) return;
+        if (string.IsNullOrEmpty(contributor.AccountId) && string.IsNullOrEmpty(contributor.DisplayName)) return;
+
+        var teamIdentity = !string.IsNullOrEmpty(contributor.AccountId)
+            ? _identityService.GetByJiraAccountId(contributor.AccountId)
+            : null;
+
+        var emailFromIdentity = teamIdentity?.Email ?? string.Empty;
+
+        // Look for an existing person already in the list (e.g. team member with same accountId).
+        var existing = SidebarPeople.FirstOrDefault(p => p.MatchesIdentity(
+            accountId: contributor.AccountId,
+            email: emailFromIdentity,
+            displayName: contributor.DisplayName));
+
+        if (existing is not null)
+        {
+            existing.AddTag(SidebarPersonViewModel.TagKnowledgeContributor);
+            return;
+        }
+
+        var person = new SidebarPersonViewModel(
+            displayName: !string.IsNullOrEmpty(teamIdentity?.DisplayName) ? teamIdentity.DisplayName : contributor.DisplayName,
+            email: emailFromIdentity,
+            avatarUrl: !string.IsNullOrEmpty(teamIdentity?.AvatarUrl) ? teamIdentity.AvatarUrl : contributor.AvatarUrl,
+            atlassianAccountId: contributor.AccountId);
+
+        person.AddTag(SidebarPersonViewModel.TagKnowledgeContributor);
+        SidebarPeople.Add(person);
+    }
 
     private bool IsCurrentUserParticipant(string participant)
     {

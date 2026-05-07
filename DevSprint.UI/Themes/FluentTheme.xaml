@@ -321,6 +321,71 @@
         </Setter>
     </Style>
 
+    <!--
+        Compact variant of OutlookTabItem for the right-hand sidebar where horizontal
+        space is tight. Smaller min-width and inter-tab margin so all 3 tabs (People,
+        Knowledge, Code) fit without horizontal overflow.
+    -->
+    <Style x:Key="CompactOutlookTabItem" TargetType="TabItem">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="6,10,6,10"/>
+        <Setter Property="Margin" Value="0,0,18,0"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="FontFamily" Value="{StaticResource ContentFont}"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TabItem">
+                    <Grid Background="Transparent" MinWidth="100">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="3"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock x:Name="HeaderText" Grid.Row="0"
+                                   Text="{TemplateBinding Header}"
+                                   FontFamily="{TemplateBinding FontFamily}"
+                                   FontSize="{TemplateBinding FontSize}"
+                                   Foreground="{TemplateBinding Foreground}"
+                                   FontWeight="SemiBold"
+                                   TextWrapping="NoWrap"
+                                   TextTrimming="None"
+                                   Margin="{TemplateBinding Padding}"/>
+                        <Border x:Name="Indicator" Grid.Row="1"
+                                Background="Transparent"
+                                CornerRadius="1.5"
+                                Height="3"/>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="HeaderText" Property="Foreground" Value="{StaticResource AccentBrush}"/>
+                            <Setter TargetName="Indicator" Property="Background"
+                                    Value="{StaticResource AccentBrush}"/>
+                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsMouseOver" Value="True"/>
+                                <Condition Property="IsSelected" Value="False"/>
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="HeaderText" Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                        </MultiTrigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Small inline pill used for tags ("Team member", "Knowledge contributor"). -->
+    <Style x:Key="TagPill" TargetType="Border">
+        <Setter Property="Background" Value="#EFF6FC"/>
+        <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="10"/>
+        <Setter Property="Padding" Value="8,2"/>
+        <Setter Property="Margin" Value="6,0,0,0"/>
+    </Style>
+
     <Style x:Key="OutlookTabItem" TargetType="TabItem">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="0"/>

@@ -292,23 +292,109 @@ Title="Team Hub" Height="700" Width="1200">
             <!-- Product Backlog -->
             <TabItem Style="{StaticResource OutlookTabItem}" Header="Product Backlog">
                 <DockPanel Margin="0,12,0,0">
-                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,12">
-                        <Border Background="{StaticResource AccentBrush}" CornerRadius="4" Padding="12,6" Margin="0,0,8,0">
-                            <TextBlock FontSize="12" Foreground="White" FontFamily="{StaticResource ContentFont}">
-                                <Run Text="Total:"/> <Run Text="{Binding BacklogTotalCount, Mode=OneWay}"/>
-                            </TextBlock>
-                        </Border>
-                        <Border Background="#E8A317" CornerRadius="4" Padding="12,6" Margin="0,0,8,0">
-                            <TextBlock FontSize="12" Foreground="White" FontFamily="{StaticResource ContentFont}">
-                                <Run Text="Refined:"/> <Run Text="{Binding BacklogRefinedCount, Mode=OneWay}"/>
-                            </TextBlock>
-                        </Border>
-                        <Border Background="#6B5B95" CornerRadius="4" Padding="12,6">
-                            <TextBlock FontSize="12" Foreground="White" FontFamily="{StaticResource ContentFont}">
-                                <Run Text="In Analysis:"/> <Run Text="{Binding BacklogInAnalysisCount, Mode=OneWay}"/>
-                            </TextBlock>
-                        </Border>
-                    </StackPanel>
+                    <Grid DockPanel.Dock="Top" Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Left: clickable state-filter badges. Inactive ones are faded. -->
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+
+                            <!-- Total: clears state filter. Always shows full opacity when no filter is active. -->
+                            <Border CornerRadius="4" Padding="12,6" Margin="0,0,8,0" Cursor="Hand"
+                                    Background="{StaticResource AccentBrush}"
+                                    ToolTip="Show all backlog items">
+                                <Border.InputBindings>
+                                    <MouseBinding MouseAction="LeftClick"
+                                                  Command="{Binding SetBacklogStateFilterCommand}"
+                                                  CommandParameter=""/>
+                                </Border.InputBindings>
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Opacity" Value="0.55"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding BacklogStateFilter}" Value="">
+                                                <Setter Property="Opacity" Value="1"/>
+                                            </DataTrigger>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Opacity" Value="0.85"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <TextBlock FontSize="12" Foreground="White" FontFamily="{StaticResource ContentFont}">
+                                    <Run Text="Total:"/> <Run Text="{Binding BacklogTotalCount, Mode=OneWay}"/>
+                                </TextBlock>
+                            </Border>
+
+                            <!-- Refined: toggle filter to issues whose status contains "refin" or "ready". -->
+                            <Border CornerRadius="4" Padding="12,6" Margin="0,0,8,0" Cursor="Hand"
+                                    Background="#E8A317"
+                                    ToolTip="Filter to refined / ready items">
+                                <Border.InputBindings>
+                                    <MouseBinding MouseAction="LeftClick"
+                                                  Command="{Binding SetBacklogStateFilterCommand}"
+                                                  CommandParameter="Refined"/>
+                                </Border.InputBindings>
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Opacity" Value="0.55"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding BacklogStateFilter}" Value="Refined">
+                                                <Setter Property="Opacity" Value="1"/>
+                                            </DataTrigger>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Opacity" Value="0.85"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <TextBlock FontSize="12" Foreground="White" FontFamily="{StaticResource ContentFont}">
+                                    <Run Text="Refined:"/> <Run Text="{Binding BacklogRefinedCount, Mode=OneWay}"/>
+                                </TextBlock>
+                            </Border>
+
+                            <!-- In Analysis: toggle filter to issues whose status contains "analy" or "review". -->
+                            <Border CornerRadius="4" Padding="12,6" Cursor="Hand"
+                                    Background="#6B5B95"
+                                    ToolTip="Filter to in-analysis / review items">
+                                <Border.InputBindings>
+                                    <MouseBinding MouseAction="LeftClick"
+                                                  Command="{Binding SetBacklogStateFilterCommand}"
+                                                  CommandParameter="InAnalysis"/>
+                                </Border.InputBindings>
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Opacity" Value="0.55"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding BacklogStateFilter}" Value="InAnalysis">
+                                                <Setter Property="Opacity" Value="1"/>
+                                            </DataTrigger>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Opacity" Value="0.85"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <TextBlock FontSize="12" Foreground="White" FontFamily="{StaticResource ContentFont}">
+                                    <Run Text="In Analysis:"/> <Run Text="{Binding BacklogInAnalysisCount, Mode=OneWay}"/>
+                                </TextBlock>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- Right: in-memory backlog search (filters at 3+ chars) -->
+                        <Grid Grid.Column="1" VerticalAlignment="Center">
+                            <TextBox x:Name="BacklogSearchBox" Width="240" Padding="8,5,28,5"
+                                     Text="{Binding BacklogFilterText, UpdateSourceTrigger=PropertyChanged}"
+                                     FontFamily="{StaticResource ContentFont}" FontSize="12"
+                                     ToolTip="Search the backlog by issue ID or words in the title (starts at 3 characters)."/>
+                            <TextBlock Text="🔍" FontSize="12" IsHitTestVisible="False"
+                                       HorizontalAlignment="Right" VerticalAlignment="Center"
+                                       Margin="0,0,8,0"
+                                       Foreground="{StaticResource TextSecondaryBrush}"/>
+                        </Grid>
+                    </Grid>
                     <ScrollViewer x:Name="BacklogScrollViewer" VerticalScrollBarVisibility="Auto" Padding="0,0,4,0">
                         <StackPanel>
                             <ItemsControl ItemsSource="{Binding BacklogView}">
@@ -343,13 +429,33 @@ Title="Team Hub" Height="700" Width="1200">
                                        FontFamily="{StaticResource ContentFont}"
                                        VerticalAlignment="Center" Margin="16,0,0,0"/>
                         </StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                            <Border Background="{StaticResource AccentBrush}" CornerRadius="4" Padding="12,6" Margin="0,0,8,0">
-                                <TextBlock FontSize="12" Foreground="White" FontFamily="{StaticResource ContentFont}">
-                                    <Run Text="Story Points:"/> <Run Text="{Binding SprintTotalStoryPoints, Mode=OneWay}"/>
-                                </TextBlock>
-                            </Border>
-                        </StackPanel>
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Left: story-points badge -->
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Border Background="{StaticResource AccentBrush}" CornerRadius="4" Padding="12,6" Margin="0,0,8,0">
+                                    <TextBlock FontSize="12" Foreground="White" FontFamily="{StaticResource ContentFont}">
+                                        <Run Text="Story Points:"/> <Run Text="{Binding SprintTotalStoryPoints, Mode=OneWay}"/>
+                                    </TextBlock>
+                                </Border>
+                            </StackPanel>
+
+                            <!-- Right: in-memory sprint search (filters at 3+ chars) -->
+                            <Grid Grid.Column="1" VerticalAlignment="Center">
+                                <TextBox x:Name="SprintSearchBox" Width="240" Padding="8,5,28,5"
+                                         Text="{Binding SprintFilterText, UpdateSourceTrigger=PropertyChanged}"
+                                         FontFamily="{StaticResource ContentFont}" FontSize="12"
+                                         ToolTip="Search the sprint by issue ID or words in the title (starts at 3 characters)."/>
+                                <TextBlock Text="🔍" FontSize="12" IsHitTestVisible="False"
+                                           HorizontalAlignment="Right" VerticalAlignment="Center"
+                                           Margin="0,0,8,0"
+                                           Foreground="{StaticResource TextSecondaryBrush}"/>
+                            </Grid>
+                        </Grid>
                         <TextBlock Text="{Binding SprintStateSummary}" FontSize="12"
                                    Foreground="{StaticResource TextSecondaryBrush}"
                                    FontFamily="{StaticResource ContentFont}" Margin="0,4,0,0"/>
@@ -477,7 +583,7 @@ Title="Team Hub" Height="700" Width="1200">
         <!-- Right Sidebar -->
         <Border Grid.Row="0" Grid.RowSpan="5"
                 HorizontalAlignment="Right"
-                Width="380"
+                Width="540"
                 Background="{StaticResource CardBrush}"
                 BorderBrush="{StaticResource CardBorderBrush}"
                 BorderThickness="1,0,0,0"
@@ -513,16 +619,16 @@ Title="Team Hub" Height="700" Width="1200">
 
                 <!-- Sidebar Tabs -->
                 <TabControl Grid.Row="2" Style="{StaticResource OutlookTabControl}">
-                    <TabItem Style="{StaticResource OutlookTabItem}" Header="Team Members">
+                    <TabItem Style="{StaticResource CompactOutlookTabItem}" Header="People">
                         <DockPanel Margin="0,12,0,0">
                             <Button DockPanel.Dock="Top"
                                     Style="{StaticResource TeamsGroupButton}"
                                     Command="{Binding OpenTeamsGroupCommand}"
-                                    ToolTip="Start a Teams group chat for this work item"
+                                    ToolTip="Start a Teams group chat with the people you've selected below"
                                     AutomationProperties.Name="Start Teams group chat">
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                     <Image Width="18" Height="18" Source="{StaticResource TeamsIconImage}" Stretch="Uniform" SnapsToDevicePixels="True"/>
-                                    <TextBlock Text="Start group chat"
+                                    <TextBlock Text="Start group chat with selected"
                                                Margin="8,0,0,0"
                                                Foreground="{StaticResource TextPrimaryBrush}"
                                                FontFamily="{StaticResource ContentFont}"
@@ -572,7 +678,7 @@ Title="Team Hub" Height="700" Width="1200">
                                 </StackPanel>
                             </Border>
                             <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,10,0,0">
-                                <ItemsControl ItemsSource="{Binding SidebarTeamMembers}">
+                                <ItemsControl ItemsSource="{Binding SidebarPeople}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <Border Background="{StaticResource SubtleFillBrush}"
@@ -580,27 +686,84 @@ Title="Team Hub" Height="700" Width="1200">
                                                 <Grid>
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto"/>
                                                         <ColumnDefinition Width="*"/>
                                                         <ColumnDefinition Width="Auto"/>
                                                     </Grid.ColumnDefinitions>
-                                                    <Border Grid.Column="0" Width="32" Height="32" CornerRadius="16"
+
+                                                    <!-- Selection checkbox -->
+                                                    <CheckBox Grid.Column="0"
+                                                              IsChecked="{Binding IsSelectedForChat, Mode=TwoWay}"
+                                                              VerticalAlignment="Center"
+                                                              Margin="0,0,10,0"
+                                                              ToolTip="Include this person in the group chat"/>
+
+                                                    <!-- Avatar bubble -->
+                                                    <Border Grid.Column="1" Width="32" Height="32" CornerRadius="16"
                                                             Background="{StaticResource AccentBrush}" Margin="0,0,12,0">
-                                                        <TextBlock Text="{Binding Name[0]}" FontSize="14"
+                                                        <TextBlock Text="{Binding DisplayName[0]}" FontSize="14"
                                                                    Foreground="White" FontWeight="SemiBold"
                                                                    HorizontalAlignment="Center" VerticalAlignment="Center"
                                                                    FontFamily="{StaticResource ContentFont}"/>
                                                     </Border>
-                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                        <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold"
+
+                                                    <!-- Name + email + tags (stacked) -->
+                                                    <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding DisplayName}" FontSize="13" FontWeight="SemiBold"
                                                                    Foreground="{StaticResource TextPrimaryBrush}"
                                                                    FontFamily="{StaticResource ContentFont}"
                                                                    TextTrimming="CharacterEllipsis"/>
-                                                        <TextBlock Text="{Binding Role}" FontSize="11"
+                                                        <TextBlock Text="{Binding Email}" FontSize="11"
                                                                    Foreground="{StaticResource TextSecondaryBrush}"
                                                                    FontFamily="{StaticResource ContentFont}"
-                                                                   TextTrimming="CharacterEllipsis"/>
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   Visibility="{Binding Email, Converter={StaticResource StringToVisibilityConverter}}"/>
+                                                        <ItemsControl ItemsSource="{Binding Tags}" Margin="0,4,0,0">
+                                                            <ItemsControl.ItemsPanel>
+                                                                <ItemsPanelTemplate>
+                                                                    <WrapPanel Orientation="Horizontal"/>
+                                                                </ItemsPanelTemplate>
+                                                            </ItemsControl.ItemsPanel>
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <Border CornerRadius="10" Padding="8,2" Margin="0,2,6,2">
+                                                                        <Border.Style>
+                                                                            <Style TargetType="Border">
+                                                                                <!-- Default: gray pill (Knowledge contributor) -->
+                                                                                <Setter Property="Background" Value="#F2F2F2"/>
+                                                                                <Setter Property="BorderBrush" Value="#BDBDBD"/>
+                                                                                <Setter Property="BorderThickness" Value="1"/>
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding}" Value="Team member">
+                                                                                        <Setter Property="Background" Value="#EFF6FC"/>
+                                                                                        <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </Border.Style>
+                                                                        <TextBlock Text="{Binding}"
+                                                                                   FontSize="10"
+                                                                                   FontWeight="SemiBold"
+                                                                                   FontFamily="{StaticResource ContentFont}">
+                                                                            <TextBlock.Style>
+                                                                                <Style TargetType="TextBlock">
+                                                                                    <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                                                                                    <Style.Triggers>
+                                                                                        <DataTrigger Binding="{Binding}" Value="Team member">
+                                                                                            <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+                                                                                        </DataTrigger>
+                                                                                    </Style.Triggers>
+                                                                                </Style>
+                                                                            </TextBlock.Style>
+                                                                        </TextBlock>
+                                                                    </Border>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
                                                     </StackPanel>
-                                                    <StackPanel Grid.Column="2"
+
+                                                    <!-- Action buttons -->
+                                                    <StackPanel Grid.Column="3"
                                                                 Orientation="Horizontal"
                                                                 VerticalAlignment="Center"
                                                                 Margin="12,0,0,0">
@@ -609,8 +772,8 @@ Title="Team Hub" Height="700" Width="1200">
                                                                 Command="{Binding DataContext.StartGitHubLinkCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                 CommandParameter="{Binding}"
                                                                 ToolTip="Link this GitHub username to a Jira teammate"
-                                                                Visibility="{Binding GitHubUsername, Converter={StaticResource StringToVisibilityConverter}}"/>
-                                                        <!-- Teams chat button for sidebar team member -->
+                                                                Visibility="{Binding CanLinkGitHubAccount, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                        <!-- Teams chat button (single person) -->
                                                         <Button Style="{StaticResource TeamsIconButton}"
                                                                 Margin="6,0,0,0"
                                                                 Command="{Binding DataContext.OpenTeamsCommand, RelativeSource={RelativeSource AncestorType=Window}}"
@@ -627,7 +790,7 @@ Title="Team Hub" Height="700" Width="1200">
                             </ScrollViewer>
                         </DockPanel>
                     </TabItem>
-                    <TabItem Style="{StaticResource OutlookTabItem}" Header="Knowledge">
+                    <TabItem Style="{StaticResource CompactOutlookTabItem}" Header="Knowledge">
                         <DockPanel Margin="0,12,0,0">
                             <TextBlock DockPanel.Dock="Top"
                                        Text="{Binding SidebarConfluenceStatus}"
@@ -702,7 +865,7 @@ Title="Team Hub" Height="700" Width="1200">
                             </ScrollViewer>
                         </DockPanel>
                     </TabItem>
-                    <TabItem Style="{StaticResource OutlookTabItem}" Header="Code">
+                    <TabItem Style="{StaticResource CompactOutlookTabItem}" Header="Code">
                         <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,12,0,0">
                             <ItemsControl ItemsSource="{Binding SidebarBranches}">
                                 <ItemsControl.ItemTemplate>
