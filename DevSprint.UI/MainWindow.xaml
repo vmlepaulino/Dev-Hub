@@ -627,6 +627,81 @@ Title="Team Hub" Height="700" Width="1200">
                             </ScrollViewer>
                         </DockPanel>
                     </TabItem>
+                    <TabItem Style="{StaticResource OutlookTabItem}" Header="Knowledge">
+                        <DockPanel Margin="0,12,0,0">
+                            <TextBlock DockPanel.Dock="Top"
+                                       Text="{Binding SidebarConfluenceStatus}"
+                                       FontSize="11"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontFamily="{StaticResource ContentFont}"
+                                       Margin="0,0,0,8"
+                                       TextWrapping="Wrap"
+                                       Visibility="{Binding SidebarConfluenceStatus, Converter={StaticResource StringToVisibilityConverter}}"/>
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <ItemsControl ItemsSource="{Binding SidebarConfluencePages}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="{StaticResource SubtleFillBrush}"
+                                                    CornerRadius="6" Padding="12,10" Margin="0,0,0,6">
+                                                <StackPanel>
+                                                    <TextBlock FontSize="13" FontWeight="SemiBold"
+                                                               Foreground="{StaticResource AccentBrush}"
+                                                               FontFamily="{StaticResource ContentFont}"
+                                                               TextWrapping="Wrap">
+                                                        <Hyperlink NavigateUri="{Binding WebUrl}"
+                                                                   RequestNavigate="Hyperlink_RequestNavigate"
+                                                                   Foreground="{StaticResource AccentBrush}"
+                                                                   TextDecorations="None">
+                                                            <Run Text="{Binding Title, Mode=OneWay}"/>
+                                                        </Hyperlink>
+                                                    </TextBlock>
+                                                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                        <TextBlock Text="{Binding SpaceName}" FontSize="11"
+                                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                                   FontFamily="{StaticResource ContentFont}"/>
+                                                        <TextBlock Text="·" Margin="6,0" FontSize="11"
+                                                                   Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                        <TextBlock Text="{Binding Type}" FontSize="11"
+                                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                                   FontFamily="{StaticResource ContentFont}"/>
+                                                        <TextBlock Text="·" Margin="6,0" FontSize="11"
+                                                                   Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                        <TextBlock Text="{Binding LastModified, StringFormat='Updated {0:dd/MM/yyyy}'}"
+                                                                   FontSize="11"
+                                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                                   FontFamily="{StaticResource ContentFont}"/>
+                                                    </StackPanel>
+                                                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                        <TextBlock Text="{Binding Creator.DisplayName, StringFormat='Author: {0}'}"
+                                                                   FontSize="11"
+                                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                                   FontFamily="{StaticResource ContentFont}"
+                                                                   Visibility="{Binding Creator.DisplayName, Converter={StaticResource StringToVisibilityConverter}}"/>
+                                                        <TextBlock Text="·" Margin="6,0" FontSize="11"
+                                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                                   Visibility="{Binding LastEditor.DisplayName, Converter={StaticResource StringToVisibilityConverter}}"/>
+                                                        <TextBlock Text="{Binding LastEditor.DisplayName, StringFormat='Last edited: {0}'}"
+                                                                   FontSize="11"
+                                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                                   FontFamily="{StaticResource ContentFont}"
+                                                                   Visibility="{Binding LastEditor.DisplayName, Converter={StaticResource StringToVisibilityConverter}}"/>
+                                                    </StackPanel>
+                                                    <TextBlock Text="{Binding MatchReason}"
+                                                               FontSize="11"
+                                                               FontStyle="Italic"
+                                                               Foreground="{StaticResource AccentBrush}"
+                                                               FontFamily="{StaticResource ContentFont}"
+                                                               Margin="0,4,0,0"
+                                                               TextWrapping="Wrap"
+                                                               Visibility="{Binding MatchReason, Converter={StaticResource StringToVisibilityConverter}}"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </DockPanel>
+                    </TabItem>
                     <TabItem Style="{StaticResource OutlookTabItem}" Header="Code">
                         <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,12,0,0">
                             <ItemsControl ItemsSource="{Binding SidebarBranches}">

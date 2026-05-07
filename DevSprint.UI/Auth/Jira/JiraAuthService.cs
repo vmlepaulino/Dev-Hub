@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.Extensions.Options;
 
 namespace DevSprint.UI.Auth.Jira;
@@ -95,7 +96,12 @@ public sealed class JiraAuthService : IJiraAuthService
         try
         {
             // 1. Hydrate cache from disk on first call.
-            _cachedTokens ??= await _store.GetAsync(EncryptedTokenStore.JiraKey, cancellationToken);
+            if (_cachedTokens is null)
+            {
+                _cachedTokens = await _store.GetAsync(EncryptedTokenStore.JiraKey, cancellationToken);
+                if (_cachedTokens is not null)
+                    Debug.WriteLine($"[Atlassian Auth] Loaded cached token. Scopes: {_cachedTokens.Scopes}");
+            }
 
             // 2. Cached and still valid (and we know the cloudid) → done.
             if (_cachedTokens is { IsAccessTokenExpired: false } && !string.IsNullOrEmpty(_cachedTokens.CloudId))
@@ -109,6 +115,7 @@ public sealed class JiraAuthService : IJiraAuthService
                 {
                     _cachedTokens = refreshed;
                     await _store.SaveAsync(EncryptedTokenStore.JiraKey, refreshed, cancellationToken);
+                    Debug.WriteLine($"[Atlassian Auth] Refreshed token. Scopes: {refreshed.Scopes}");
                     return refreshed;
                 }
                 // Refresh failed (refresh token revoked or expired) — fall through to interactive.
@@ -120,6 +127,7 @@ public sealed class JiraAuthService : IJiraAuthService
 
             _cachedTokens = fresh;
             await _store.SaveAsync(EncryptedTokenStore.JiraKey, fresh, cancellationToken);
+            Debug.WriteLine($"[Atlassian Auth] New interactive token. Scopes: {fresh.Scopes}");
             return fresh;
         }
         finally { _gate.Release(); }

@@ -20,6 +20,7 @@ public partial class MainViewModel : ObservableObject
 {
     private readonly IJiraService _jiraService;
     private readonly IGitHubService _gitHubService;
+    private readonly IConfluenceService _confluenceService;
     private readonly IIdentityService _identityService;
     private readonly IGitHubAuthService _gitHubAuthService;
     private readonly IJiraAuthService _jiraAuthService;
@@ -221,6 +222,10 @@ public partial class MainViewModel : ObservableObject
 
     public ObservableCollection<TeamMember> SidebarTeamMembers { get; } = [];
     public ObservableCollection<BranchInfo> SidebarBranches { get; } = [];
+    public ObservableCollection<ConfluencePage> SidebarConfluencePages { get; } = [];
+
+    [ObservableProperty]
+    private string _sidebarConfluenceStatus = string.Empty;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(LinkGitHubMemberCommand))]
@@ -246,6 +251,7 @@ public partial class MainViewModel : ObservableObject
     public MainViewModel(
         IJiraService jiraService,
         IGitHubService gitHubService,
+        IConfluenceService confluenceService,
         IIdentityService identityService,
         IGitHubAuthService gitHubAuthService,
         IJiraAuthService jiraAuthService,
@@ -254,6 +260,7 @@ public partial class MainViewModel : ObservableObject
     {
         _jiraService = jiraService;
         _gitHubService = gitHubService;
+        _confluenceService = confluenceService;
         _identityService = identityService;
         _gitHubAuthService = gitHubAuthService;
         _jiraAuthService = jiraAuthService;
@@ -519,6 +526,8 @@ public partial class MainViewModel : ObservableObject
         IsSidebarLoading = true;
         SidebarTeamMembers.Clear();
         SidebarBranches.Clear();
+        SidebarConfluencePages.Clear();
+        SidebarConfluenceStatus = string.Empty;
         IsGitHubLinkOpen = false;
         GitHubMemberToLink = null;
         SelectedIdentityForGitHubLink = null;
@@ -541,8 +550,9 @@ public partial class MainViewModel : ObservableObject
             var sprintStart = SelectedSprint?.StartDate;
             var branchesTask = _gitHubService.GetBranchesForIssueAsync(issue.Key, sprintStart);
             var contributorsTask = _gitHubService.GetContributorsForIssueAsync(issue.Key, sprintStart);
+            var confluencePagesTask = _confluenceService.GetPagesForIssueAsync(issue.Key, issue.Summary);
 
-            await Task.WhenAll(branchesTask, contributorsTask);
+            await Task.WhenAll(branchesTask, contributorsTask, confluencePagesTask);
 
             foreach (var member in contributorsTask.Result)
             {
@@ -552,6 +562,13 @@ public partial class MainViewModel : ObservableObject
 
             foreach (var branch in branchesTask.Result)
                 SidebarBranches.Add(branch);
+
+            foreach (var page in confluencePagesTask.Result)
+                SidebarConfluencePages.Add(page);
+
+            SidebarConfluenceStatus = SidebarConfluencePages.Count == 0
+                ? "No Confluence pages mention this issue."
+                : $"{SidebarConfluencePages.Count} page{(SidebarConfluencePages.Count == 1 ? "" : "s")} mention this issue.";
         }
         catch
         {

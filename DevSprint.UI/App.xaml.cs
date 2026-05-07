@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Windows;
 using System.Windows.Markup;
 using DevSprint.UI.Auth;
+using DevSprint.UI.Auth.Confluence;
 using DevSprint.UI.Auth.GitHub;
 using DevSprint.UI.Auth.Jira;
 using DevSprint.UI.Onboarding;
@@ -77,6 +78,13 @@ namespace DevSprint.UI
             services.AddHttpClient<IJiraService, JiraService>()
                     .AddHttpMessageHandler<JiraBearerTokenHandler>()
                     .AddHttpMessageHandler<JiraApiBaseUriHandler>();
+
+            // ConfluenceService shares the Atlassian access token with Jira (same OAuth
+            // flow, same /oauth/token endpoint), so we reuse JiraBearerTokenHandler.
+            // ConfluenceApiBaseUriHandler routes the request to /ex/confluence/{cloudId}/.
+            services.AddHttpClient<IConfluenceService, ConfluenceService>()
+                    .AddHttpMessageHandler<JiraBearerTokenHandler>()
+                    .AddHttpMessageHandler<ConfluenceApiBaseUriHandler>();
 
             // GitHubService gets its Authorization header from the bearer handler
             // (see ConfigureAuth) — the service constructor no longer touches tokens.
@@ -258,6 +266,7 @@ namespace DevSprint.UI
 
             services.AddTransient<JiraBearerTokenHandler>();
             services.AddTransient<JiraApiBaseUriHandler>();
+            services.AddTransient<ConfluenceApiBaseUriHandler>();
         }
     }
 }
